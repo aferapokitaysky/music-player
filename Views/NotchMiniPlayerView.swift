@@ -9,9 +9,6 @@ struct NotchMiniPlayerView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Spacer clearing the physical notch bezel
-            Spacer().frame(height: 38)
-            
             HStack(spacing: 12) {
                 if isHovered {
                     expandedContent
@@ -23,31 +20,51 @@ struct NotchMiniPlayerView: View {
                     collapsedContent
                 }
             }
+            .padding(.top, isHovered ? 38 : 0) // Perfectly pushes active content below the physical notch bezel
             .padding(.horizontal, isHovered ? 16 : 8)
-            // Premium upscaled double-row capsule size: collapsed width 190 -> expanded width 450, height 108
-            .frame(width: isHovered ? 450 : 190, height: isHovered ? 108 : 12)
+            // Collapsed size is exactly the size of the notch (200x38).
+            // Expanded size covers the 38pt notch depth + 108pt of active controls (460x146).
+            .frame(width: isHovered ? 460 : 200, height: isHovered ? 146 : 38)
             .background(
-                RoundedRectangle(cornerRadius: isHovered ? 24 : 6, style: .continuous)
-                    .fill(
-                        (themeManager.theme == .dark ? Color(white: 0.08) : Color(white: 0.94))
-                            .opacity(0.96)
+                CustomRoundedCorner(
+                    topLeft: 0,
+                    topRight: 0,
+                    bottomLeft: isHovered ? 24 : 10,
+                    bottomRight: isHovered ? 24 : 10
+                )
+                .fill(themeManager.theme == .dark 
+                      ? Color.black.opacity(0.85) 
+                      : Color.white.opacity(0.90))
+                .background(
+                    CustomRoundedCorner(
+                        topLeft: 0,
+                        topRight: 0,
+                        bottomLeft: isHovered ? 24 : 10,
+                        bottomRight: isHovered ? 24 : 10
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: isHovered ? 24 : 6, style: .continuous)
-                            .stroke(palette.strokeStrong, lineWidth: 1)
+                    .fill(palette.sidebar.opacity(0.65))
+                )
+                .overlay(
+                    CustomRoundedCorner(
+                        topLeft: 0,
+                        topRight: 0,
+                        bottomLeft: isHovered ? 24 : 10,
+                        bottomRight: isHovered ? 24 : 10
                     )
+                    .stroke(palette.strokeStrong, lineWidth: 1.2)
+                )
             )
             .shadow(color: palette.cardShadow.opacity(isHovered ? 0.40 : 0.0), radius: isHovered ? 16 : 0, y: isHovered ? 10 : 0)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.72)) {
+                    isHovered = hovering
+                }
+            }
             
             Spacer(minLength: 0)
         }
         .frame(width: 500, height: 180)
-        .contentShape(Rectangle())
-        .onHover { hovering in
-            withAnimation(.spring(response: 0.36, dampingFraction: 0.72)) {
-                isHovered = hovering
-            }
-        }
     }
     
     // MARK: - Collapsed
@@ -249,5 +266,44 @@ struct NotchBarsVisualizer: View {
                 ctx.fill(path, with: .color(color))
             }
         }
+    }
+}
+
+// MARK: - Custom Rounded Corner Shape
+struct CustomRoundedCorner: Shape {
+    var topLeft: CGFloat = 0
+    var topRight: CGFloat = 0
+    var bottomLeft: CGFloat = 0
+    var bottomRight: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        let tr = min(min(self.topRight, h/2), w/2)
+        let tl = min(min(self.topLeft, h/2), w/2)
+        let br = min(min(self.bottomRight, h/2), w/2)
+        let bl = min(min(self.bottomLeft, h/2), w/2)
+
+        path.move(to: CGPoint(x: w / 2, y: 0))
+        path.addLine(to: CGPoint(x: w - tr, y: 0))
+        path.addArc(center: CGPoint(x: w - tr, y: tr), radius: tr,
+                    startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
+
+        path.addLine(to: CGPoint(x: w, y: h - br))
+        path.addArc(center: CGPoint(x: w - br, y: h - br), radius: br,
+                    startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
+
+        path.addLine(to: CGPoint(x: bl, y: h))
+        path.addArc(center: CGPoint(x: bl, y: h - bl), radius: bl,
+                    startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
+
+        path.addLine(to: CGPoint(x: 0, y: tl))
+        path.addArc(center: CGPoint(x: tl, y: tl), radius: tl,
+                    startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
+
+        path.closeSubpath()
+        return path
     }
 }
