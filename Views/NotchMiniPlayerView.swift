@@ -24,14 +24,17 @@ struct NotchMiniPlayerView: View {
                 }
             }
             .padding(.horizontal, isHovered ? 16 : 8)
-            // Premium upscaled capsule size: collapsed width 190 -> expanded width 450, height 82
-            .frame(width: isHovered ? 450 : 190, height: isHovered ? 82 : 12)
+            // Premium upscaled double-row capsule size: collapsed width 190 -> expanded width 450, height 108
+            .frame(width: isHovered ? 450 : 190, height: isHovered ? 108 : 12)
             .background(
                 RoundedRectangle(cornerRadius: isHovered ? 24 : 6, style: .continuous)
-                    .fill(palette.cardElevated.opacity(themeManager.theme == .dark ? 0.90 : 0.72))
+                    .fill(
+                        (themeManager.theme == .dark ? Color(white: 0.08) : Color(white: 0.94))
+                            .opacity(0.96)
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: isHovered ? 24 : 6, style: .continuous)
-                            .stroke(palette.stroke, lineWidth: 1)
+                            .stroke(palette.strokeStrong, lineWidth: 1)
                     )
             )
             .shadow(color: palette.cardShadow.opacity(isHovered ? 0.40 : 0.0), radius: isHovered ? 16 : 0, y: isHovered ? 10 : 0)
@@ -52,81 +55,130 @@ struct NotchMiniPlayerView: View {
         Spacer()
     }
     
-    // MARK: - Expanded (Frosted Glassmorphic matches primary UI)
+    // MARK: - Expanded (Frosted Solid Cool Gray matches primary UI)
     private var expandedContent: some View {
-        HStack(spacing: 14) {
-            // Square Album Art with Rounded Corners (no vinyl, matches main UI)
-            albumArtCover
-                .frame(width: 56, height: 56)
-            
-            // Track details
-            VStack(alignment: .leading, spacing: 3) {
-                if let track = viewModel.currentTrack {
-                    Text(track.title)
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
-                        .foregroundColor(palette.textPrimary)
-                        .lineLimit(1)
-                    Text(track.artist)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(palette.textSecondary)
-                        .lineLimit(1)
-                } else {
-                    Text("Нет трека")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(palette.textTertiary)
+        VStack(spacing: 8) {
+            // Row 1: Cover Art, Metadata, Real-time visualizer, and Playback Controls
+            HStack(spacing: 14) {
+                // Square Album Art with Rounded Corners (no vinyl, matches main UI)
+                albumArtCover
+                    .frame(width: 56, height: 56)
+                
+                // Track details
+                VStack(alignment: .leading, spacing: 3) {
+                    if let track = viewModel.currentTrack {
+                        Text(track.title)
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .foregroundColor(palette.textPrimary)
+                            .lineLimit(1)
+                        Text(track.artist)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(palette.textSecondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("Нет трека")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(palette.textTertiary)
+                    }
+                    
+                    // Micro bars visualizer
+                    NotchBarsVisualizer(bars: viewModel.visualizerBars, color: palette.accent)
+                        .frame(height: 16)
+                        .padding(.top, 2)
                 }
                 
-                // Micro bars visualizer
-                NotchBarsVisualizer(bars: viewModel.visualizerBars, color: palette.accent)
-                    .frame(height: 16)
-                    .padding(.top, 2)
-            }
-            
-            Spacer(minLength: 6)
-            
-            // Sleek Control Buttons (perfect main UI style, includes backward skip)
-            HStack(spacing: 9) {
-                Button(action: {
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
-                        viewModel.prevTrack()
+                Spacer(minLength: 6)
+                
+                // Sleek Control Buttons (perfect main UI style, includes backward skip)
+                HStack(spacing: 9) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
+                            viewModel.prevTrack()
+                        }
+                    }) {
+                        Image(systemName: "backward.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(palette.textSecondary)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(palette.inset))
+                            .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
                     }
-                }) {
-                    Image(systemName: "backward.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(palette.textSecondary)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(palette.inset))
-                        .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Button(action: {
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
-                        viewModel.togglePlayPause()
+                    Button(action: {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
+                            viewModel.togglePlayPause()
+                        }
+                    }) {
+                        Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundColor(themeManager.theme == .dark ? .black : .white)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(palette.textPrimary))
                     }
-                }) {
-                    Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundColor(themeManager.theme == .dark ? .black : .white)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(palette.textPrimary))
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: {
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
-                        viewModel.nextTrack()
+                    .buttonStyle(.plain)
+                    
+                    Button(action: {
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.60)) {
+                            viewModel.nextTrack()
+                        }
+                    }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(palette.textSecondary)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(palette.inset))
+                            .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
                     }
-                }) {
-                    Image(systemName: "forward.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(palette.textSecondary)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(palette.inset))
-                        .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            
+            // Row 2: Sleek Interactive Volume Control Slider
+            HStack(spacing: 10) {
+                Image(systemName: viewModel.volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(palette.textSecondary)
+                    .frame(width: 14)
+                
+                GeometryReader { geo in
+                    let progress = CGFloat(viewModel.volume)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(palette.inset)
+                            .frame(height: 4)
+                            .overlay(
+                                Capsule().stroke(palette.stroke, lineWidth: 0.5)
+                            )
+                        
+                        Capsule()
+                            .fill(palette.textPrimary.opacity(0.85))
+                            .frame(width: max(0, min(geo.size.width, geo.size.width * progress)), height: 4)
+                        
+                        Circle()
+                            .fill(palette.textPrimary)
+                            .frame(width: 10, height: 10)
+                            .shadow(color: palette.cardShadow, radius: 2)
+                            .offset(x: max(0, min(geo.size.width - 10, geo.size.width * progress - 5)))
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let percentage = Double(value.location.x / geo.size.width)
+                                viewModel.volume = max(0, min(1.0, percentage))
+                            }
+                    )
+                }
+                .frame(height: 10)
+                
+                Text("\(Int(viewModel.volume * 100))%")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(palette.textSecondary)
+                    .frame(width: 30, alignment: .trailing)
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
         }
     }
     
