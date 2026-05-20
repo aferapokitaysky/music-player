@@ -29,7 +29,8 @@ struct NotchMiniPlayerView: View {
                 ZStack {
                     VisualEffectView(
                         material: themeManager.theme.nsMaterial,
-                        blendingMode: .behindWindow
+                        blendingMode: .behindWindow,
+                        cornerRadius: isHovered ? 24 : 12
                     )
                     
                     if isHovered {
@@ -332,17 +333,29 @@ struct CustomRoundedCorner: Shape {
 struct VisualEffectView: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
+    let cornerRadius: CGFloat
     
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = material
         view.blendingMode = blendingMode
         view.state = .active
+        
+        view.wantsLayer = true
+        view.layer?.cornerRadius = cornerRadius
+        view.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        view.layer?.masksToBounds = true
+        
         return view
     }
     
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
+        
+        nsView.wantsLayer = true
+        nsView.layer?.cornerRadius = cornerRadius
+        nsView.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        nsView.layer?.masksToBounds = true
     }
 }
