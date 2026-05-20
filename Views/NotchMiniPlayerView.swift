@@ -343,7 +343,7 @@ struct VisualEffectView: NSViewRepresentable {
         
         view.wantsLayer = true
         view.layer?.cornerRadius = cornerRadius
-        view.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        view.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
         view.layer?.masksToBounds = true
         
         return view
@@ -355,7 +355,7 @@ struct VisualEffectView: NSViewRepresentable {
         
         nsView.wantsLayer = true
         nsView.layer?.cornerRadius = cornerRadius
-        nsView.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        nsView.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
         nsView.layer?.masksToBounds = true
     }
 }
