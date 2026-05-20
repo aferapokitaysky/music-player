@@ -29,7 +29,7 @@ struct NotchMiniPlayerView: View {
                 ZStack {
                     VisualEffectView(
                         material: themeManager.theme.nsMaterial,
-                        blendingMode: .behindWindow,
+                        blendingMode: .withinWindow,
                         cornerRadius: isHovered ? 24 : 12
                     )
                     
