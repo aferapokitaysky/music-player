@@ -196,6 +196,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         notchWin.ignoresMouseEvents = false
         notchWin.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         notchWin.acceptsMouseMovedEvents = true
+        notchWin.canHide = false
+        notchWin.hidesOnDeactivate = false
         
         let notchView = NotchMiniPlayerView(viewModel: viewModel)
             .environmentObject(themeManager)

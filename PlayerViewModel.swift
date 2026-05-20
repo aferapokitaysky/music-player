@@ -1116,39 +1116,51 @@ class PlayerViewModel: ObservableObject {
             let trackSeed = Double(abs((currentTrack?.id ?? "default").hashValue % 1000)) / 1000.0
             
             // Derive a unique tempo (BPM) and rhythm offset for this specific song
-            let bpm = 115.0 + trackSeed * 45.0 // Unique BPM between 115 and 160
+            let bpm = 110.0 + trackSeed * 50.0 // Unique BPM between 110 and 160
             let secondsPerBeat = 60.0 / bpm
             let currentBeat = currentTime / secondsPerBeat
+            let beatFraction = currentBeat.truncatingRemainder(dividingBy: 1.0)
             
-            // Dynamic phase based entirely on exact currentTime to prevent any visual drifts/stutters!
+            // Rhythmic envelopes that mimic highly accurate audio frequency bands
+            // 1. Bass / Kick Drum Envelope: hits heavy on the integer beats (fraction 0) and decays rapidly
+            let kickEnvelope = exp(-7.5 * beatFraction)
+            let subBassEnvelope = exp(-3.5 * beatFraction) * 0.45
+            let bassPulse = kickEnvelope + subBassEnvelope
+            
+            // 2. Mid / Snare Envelope: hits sharp on beats 2 and 4 (odd beat index) + off-beat syncopation on eighth notes
+            let isSnareBeat = Int(currentBeat) % 2 == 1
+            let snareEnvelope = isSnareBeat ? exp(-9.0 * beatFraction) : 0.0
+            let offbeatMid = exp(-11.0 * abs(beatFraction - 0.5)) * 0.35
+            let midPulse = snareEnvelope + offbeatMid
+            
+            // 3. Treble / Hi-Hats: fast sixteenth-note transients and eighth-note off-beats
+            let offbeatHat = exp(-14.0 * abs(beatFraction - 0.5))
+            let sixteenthHat1 = exp(-18.0 * abs(beatFraction - 0.25))
+            let sixteenthHat2 = exp(-18.0 * abs(beatFraction - 0.75))
+            let treblePulse = max(offbeatHat * 0.65, max(sixteenthHat1 * 0.45, sixteenthHat2 * 0.45))
+            
+            // Dynamic phase based on currentTime for organic background movement
             let timeFactor = currentTime
             
             for i in 0..<count {
                 let indexFactor = Double(i) / Double(count)
-                
-                // Deterministic harmonics seeded by track properties
-                // Bass section pulses hard on the beats of this specific song (with power of 4 for sharpness)
-                let beatPulse = pow(max(0.0, sin(currentBeat * .pi - (trackSeed * .pi))), 4.0)
-                
-                let bassFrequency = beatPulse * 0.65 + sin(timeFactor * 3.5 + trackSeed * 10.0) * 0.15 + 0.20
-                let midFrequency = cos(timeFactor * 2.2 + Double(i) * 0.25 + trackSeed * 5.0) * 0.22 + 0.35
-                let highFrequency = sin(timeFactor * 4.5 - Double(i) * 0.5 + trackSeed * 8.0) * 0.18 + 0.18
-                
                 var amplitude = 0.0
                 
                 if i < count / 4 {
-                    // Bass section (low frequencies)
-                    amplitude = bassFrequency * (1.0 - indexFactor) * 1.15
+                    // Bass section (kick drum + deep organic wobble)
+                    let bassOscillation = sin(timeFactor * 3.5 + trackSeed * 10.0) * 0.12
+                    amplitude = (bassPulse * 0.75 + 0.15 + bassOscillation) * (1.0 - indexFactor) * 1.25
                 } else if i < count * 3 / 4 {
-                    // Mid frequencies
-                    amplitude = midFrequency * 0.95
+                    // Mid frequencies (snare + active harmony wave)
+                    let midOscillation = cos(timeFactor * 2.2 + Double(i) * 0.25 + trackSeed * 5.0) * 0.15
+                    amplitude = (midPulse * 0.68 + 0.20 + midOscillation) * 0.95
                 } else {
-                    // Treble frequencies
-                    amplitude = highFrequency * indexFactor * 1.35
+                    // Treble frequencies (crisp hi-hat ticks + ambient air)
+                    let trebleOscillation = sin(timeFactor * 4.5 - Double(i) * 0.5 + trackSeed * 8.0) * 0.10
+                    amplitude = (treblePulse * 0.72 + 0.12 + trebleOscillation) * indexFactor * 1.35
                 }
                 
-                // High-frequency transients (simulated snare / hi-hat hits)
-                // Add micro-noise transients that trigger deterministically in the song timeline
+                // Add micro-noise transients that trigger deterministically in the song timeline for hi-hat/snare sizzle
                 let transientTrigger = sin(timeFactor * 14.0 + trackSeed * 3.0)
                 if transientTrigger > 0.85 && i > count * 2 / 3 {
                     amplitude += 0.22 * (transientTrigger - 0.85)
@@ -1158,13 +1170,14 @@ class PlayerViewModel: ObservableObject {
                 let noise = Double.random(in: -0.04...0.04)
                 amplitude = max(0.0, min(1.0, amplitude + noise))
                 
-                // Scale target amplitude by current volume level to link visualizer with loudness!
-                targetBars[i] = min(1.0, amplitude * 1.45 * volume)
+                // Scale target amplitude by a full constant factor instead of the volume level,
+                // so that the visualizer reacts perfectly to the beat and rhythm regardless of volume/mute.
+                targetBars[i] = min(1.0, amplitude * 1.45)
             }
             
-            // Smooth physics-based spring interpolation
-            let stiffness = 0.22
-            let damping = 0.76
+            // Smooth but snappy physics-based spring interpolation
+            let stiffness = 0.28 // Snappier response (was 0.22)
+            let damping = 0.70   // Allows small realistic micro-bounces (was 0.76)
             
             for i in 0..<count {
                 let displacement = targetBars[i] - tempBars[i]
