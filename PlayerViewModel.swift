@@ -47,11 +47,25 @@ struct Album: Identifiable, Equatable, Codable {
     var tracks: [Track]
 }
 
+// MARK: - High-Frequency Audio & Visual State (Isolates 60 FPS redraws)
+@MainActor
+final class HighFrequencyState: ObservableObject {
+    @Published var visualizerBars: [Double] = Array(repeating: 0.0, count: 28)
+    @Published var currentTime: Double = 0.0
+}
+
 @MainActor
 class PlayerViewModel: ObservableObject {
+    // High frequency state instance
+    let hfState = HighFrequencyState()
+
     // Playback State
     @Published var isPlaying = false
-    @Published var currentTime: Double = 0.0
+    var currentTime: Double = 0.0 {
+        didSet {
+            hfState.currentTime = currentTime
+        }
+    }
     @Published var volume: Double = 0.8 {
         didSet {
             player.volume = Float(volume)
@@ -91,7 +105,11 @@ class PlayerViewModel: ObservableObject {
     }
     
     // Visualizer State
-    @Published var visualizerBars: [Double] = Array(repeating: 0.0, count: 28)
+    var visualizerBars: [Double] = Array(repeating: 0.0, count: 28) {
+        didSet {
+            hfState.visualizerBars = visualizerBars
+        }
+    }
     private var targetBars: [Double] = Array(repeating: 0.0, count: 28)
     private var velocities: [Double] = Array(repeating: 0.0, count: 28)
     

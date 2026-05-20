@@ -22,28 +22,44 @@ struct NotchMiniPlayerView: View {
             }
             .padding(.top, isHovered ? 36 : 0) // Safe 36pt top padding to clear MacBook Air/Pro physical notch bezels
             .padding(.horizontal, isHovered ? 16 : 8)
-            // Collapsed size is 140x30, completely safe within any standard MacBook notch (e.g. Air is 150x32, Pro is 162x37)
+            // Collapsed size is 172x32, matching standard physical MacBook notch curves
             // Expanded size is 460x138, fitting perfectly below the notch area
-            .frame(width: isHovered ? 460 : 140, height: isHovered ? 138 : 30)
+            .frame(width: isHovered ? 460 : 172, height: isHovered ? 138 : 32)
             .background(
-                VisualEffectView(
-                    material: themeManager.theme.nsMaterial,
-                    blendingMode: .behindWindow
-                )
+                ZStack {
+                    VisualEffectView(
+                        material: themeManager.theme.nsMaterial,
+                        blendingMode: .behindWindow
+                    )
+                    
+                    if isHovered {
+                        AmbientBackdropView(
+                            isPlaying: viewModel.isPlaying,
+                            ambientColors: palette.accentGradient,
+                            isDark: themeManager.theme == .dark
+                        )
+                        .scaleEffect(0.6)
+                        .opacity(0.35)
+                        .allowsHitTesting(false)
+                        
+                        CosmicDustView(isPlaying: viewModel.isPlaying, palette: palette)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .clipShape(
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
-                        bottomLeft: isHovered ? 24 : 0,
-                        bottomRight: isHovered ? 24 : 0
+                        bottomLeft: isHovered ? 24 : 12,
+                        bottomRight: isHovered ? 24 : 12
                     )
                 )
                 .background(
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
-                        bottomLeft: isHovered ? 24 : 0,
-                        bottomRight: isHovered ? 24 : 0
+                        bottomLeft: isHovered ? 24 : 12,
+                        bottomRight: isHovered ? 24 : 12
                     )
                     .fill(palette.sidebar.opacity(themeManager.theme == .dark ? 0.30 : 0.45))
                 )
@@ -51,8 +67,8 @@ struct NotchMiniPlayerView: View {
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
-                        bottomLeft: isHovered ? 24 : 0,
-                        bottomRight: isHovered ? 24 : 0
+                        bottomLeft: isHovered ? 24 : 12,
+                        bottomRight: isHovered ? 24 : 12
                     )
                     .stroke(palette.strokeStrong, lineWidth: 1.2)
                 )
@@ -103,7 +119,7 @@ struct NotchMiniPlayerView: View {
                     }
                     
                     // Micro bars visualizer
-                    NotchBarsVisualizer(bars: viewModel.visualizerBars, color: palette.accent)
+                    NotchBarsVisualizer(hfState: viewModel.hfState, color: palette.accent)
                         .frame(height: 16)
                         .padding(.top, 2)
                 }
@@ -250,19 +266,19 @@ struct NotchMiniPlayerView: View {
 
 // MARK: - Miniature Bars Visualizer View
 struct NotchBarsVisualizer: View {
-    let bars: [Double]
+    @ObservedObject var hfState: HighFrequencyState
     let color: Color
     
     var body: some View {
         Canvas(rendersAsynchronously: true) { ctx, size in
-            let n = min(bars.count, 22)
+            let n = min(hfState.visualizerBars.count, 22)
             guard n > 0 else { return }
             let spacing: CGFloat = 1.5
             let barWidth = (size.width - spacing * CGFloat(n - 1)) / CGFloat(n)
             
             for i in 0..<n {
                 let x = CGFloat(i) * (barWidth + spacing)
-                let h = size.height * CGFloat(bars[i] * 0.9)
+                let h = size.height * CGFloat(hfState.visualizerBars[i] * 0.9)
                 let y = size.height - h
                 
                 let rect = CGRect(x: x, y: y, width: barWidth, height: max(1.5, h))

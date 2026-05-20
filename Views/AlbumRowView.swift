@@ -66,7 +66,6 @@ struct AlbumRowView: View {
                 }
             }
             .scaleEffect(isHovered ? 1.08 : 1.0)
-            .animation(.spring(response: 0.22, dampingFraction: 0.58), value: isHovered)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.name)
@@ -78,7 +77,6 @@ struct AlbumRowView: View {
                     .foregroundColor(palette.textTertiary)
             }
             .offset(x: isHovered ? 4 : 0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.65), value: isHovered)
 
             Spacer(minLength: 0)
 
@@ -102,8 +100,11 @@ struct AlbumRowView: View {
         )
         .contentShape(Rectangle())
         .scaleEffect(isHovered ? 1.025 : 1.0)
-        .shadow(color: isHovered ? palette.cardShadow.opacity(0.12) : Color.clear, radius: 5, x: 0, y: 3)
-        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
+        .shadow(color: isHovered ? palette.cardShadow.opacity(0.12) : .clear,
+                radius: isHovered ? 5 : 0,
+                x: 0,
+                y: isHovered ? 3 : 0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.70), value: isHovered)
         .onTapGesture {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
                 viewModel.selectedAlbumId = album.id

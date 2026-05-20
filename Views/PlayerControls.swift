@@ -4,83 +4,14 @@ struct PlayerControls: View {
     @ObservedObject var viewModel: PlayerViewModel
     @EnvironmentObject var themeManager: ThemeManager
 
-    @State private var isHoveringTimeline = false
     @State private var isHoveringVolume = false
 
     private var palette: Palette { themeManager.theme.palette }
 
     var body: some View {
         VStack(spacing: 14) {
-            // Timeline
-            VStack(spacing: 6) {
-                GeometryReader { geo in
-                    let progress = (viewModel.currentTrack?.duration ?? 0) > 0
-                        ? viewModel.currentTime / (viewModel.currentTrack?.duration ?? 1)
-                        : 0.0
-                    let trackHeight: CGFloat = isHoveringTimeline ? 9 : 5
-                    let knobSize: CGFloat = isHoveringTimeline ? 18 : 13
-
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(palette.inset)
-                            .frame(height: trackHeight)
-                            .overlay(
-                                Capsule().stroke(palette.stroke, lineWidth: 1)
-                            )
-
-                        Capsule()
-                            .fill(LinearGradient(colors: palette.progressGradient,
-                                                 startPoint: .leading, endPoint: .trailing))
-                            .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(progress))),
-                                   height: trackHeight)
-                            .shadow(color: palette.glow, radius: isHoveringTimeline ? 6 : 3)
-
-                        Circle()
-                            .fill(palette.textPrimary)
-                            .frame(width: knobSize, height: knobSize)
-                            .overlay(
-                                Circle()
-                                    .stroke(LinearGradient(colors: palette.progressGradient,
-                                                           startPoint: .leading, endPoint: .trailing),
-                                            lineWidth: 2)
-                            )
-                            .shadow(color: palette.cardShadow, radius: isHoveringTimeline ? 4 : 2, x: 0, y: isHoveringTimeline ? 3 : 1)
-                            .offset(x: max(0, min(geo.size.width - knobSize, geo.size.width * CGFloat(progress) - knobSize / 2.0)))
-                    }
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let duration = viewModel.currentTrack?.duration ?? 0.0
-                                guard duration > 0 else { return }
-                                let percentage = Double(value.location.x / geo.size.width)
-                                let targetTime = max(0, min(duration, percentage * duration))
-                                viewModel.seek(to: targetTime)
-                            }
-                    )
-                    .onHover { hovering in
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
-                            isHoveringTimeline = hovering
-                        }
-                    }
-                }
-                .frame(height: isHoveringTimeline ? 18 : 14)
-
-                HStack {
-                    Text(formatTime(viewModel.currentTime))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundColor(palette.textSecondary)
-                    Spacer()
-                    Text("-" + formatTime(max(0, (viewModel.currentTrack?.duration ?? 0) - viewModel.currentTime)))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundColor(palette.textTertiary)
-                    Spacer()
-                    Text(formatTime(viewModel.currentTrack?.duration ?? 0.0))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundColor(palette.textSecondary)
-                }
-            }
-            .padding(.horizontal, 16)
+            PlaybackTimelineView(hfState: viewModel.hfState, viewModel: viewModel, palette: palette)
+                .padding(.horizontal, 16)
 
             // Primary controls
             HStack(spacing: 22) {
@@ -103,7 +34,7 @@ struct PlayerControls: View {
                 )
 
                 // Animated elastic Play/Pause
-                PlayPauseButton(viewModel: viewModel, palette: palette)
+                PlayPauseButton(viewModel: viewModel, hfState: viewModel.hfState, palette: palette)
 
                 ControlIconButton(
                     system: "forward.fill",
@@ -228,11 +159,12 @@ struct ControlIconButton: View {
 // MARK: - Reusable Bouncy Play/Pause Button
 struct PlayPauseButton: View {
     @ObservedObject var viewModel: PlayerViewModel
+    @ObservedObject var hfState: HighFrequencyState
     let palette: Palette
     @State private var isHovered = false
 
     var body: some View {
-        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
+        let intensity = hfState.visualizerBars.reduce(0.0, +) / max(1.0, Double(hfState.visualizerBars.count))
         let dynamicGlow = viewModel.isPlaying ? CGFloat(intensity * 14.0) : 0.0
 
         Button(action: { viewModel.togglePlayPause() }) {
@@ -267,5 +199,90 @@ struct PlayPauseButton: View {
         .onHover { hovering in
             isHovered = hovering
         }
+    }
+}
+
+// MARK: - Decoupled Playback Timeline View (10 FPS redraws isolated)
+struct PlaybackTimelineView: View {
+    @ObservedObject var hfState: HighFrequencyState
+    @ObservedObject var viewModel: PlayerViewModel
+    let palette: Palette
+
+    @State private var isHoveringTimeline = false
+
+    var body: some View {
+        let duration = viewModel.currentTrack?.duration ?? 0.0
+        let progress = duration > 0 ? hfState.currentTime / duration : 0.0
+        let trackHeight: CGFloat = isHoveringTimeline ? 9 : 5
+        let knobSize: CGFloat = isHoveringTimeline ? 18 : 13
+
+        return VStack(spacing: 6) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(palette.inset)
+                        .frame(height: trackHeight)
+                        .overlay(
+                            Capsule().stroke(palette.stroke, lineWidth: 1)
+                        )
+
+                    Capsule()
+                        .fill(LinearGradient(colors: palette.progressGradient,
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(progress))),
+                               height: trackHeight)
+                        .shadow(color: palette.glow, radius: isHoveringTimeline ? 6 : 3)
+
+                    Circle()
+                        .fill(palette.textPrimary)
+                        .frame(width: knobSize, height: knobSize)
+                        .overlay(
+                            Circle()
+                                .stroke(LinearGradient(colors: palette.progressGradient,
+                                                       startPoint: .leading, endPoint: .trailing),
+                                        lineWidth: 2)
+                        )
+                        .shadow(color: palette.cardShadow, radius: isHoveringTimeline ? 4 : 2, x: 0, y: isHoveringTimeline ? 3 : 1)
+                        .offset(x: max(0, min(geo.size.width - knobSize, geo.size.width * CGFloat(progress) - knobSize / 2.0)))
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            guard duration > 0 else { return }
+                            let percentage = Double(value.location.x / geo.size.width)
+                            let targetTime = max(0, min(duration, percentage * duration))
+                            viewModel.seek(to: targetTime)
+                        }
+                )
+                .onHover { hovering in
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+                        isHoveringTimeline = hovering
+                    }
+                }
+            }
+            .frame(height: isHoveringTimeline ? 18 : 14)
+
+            HStack {
+                Text(formatTime(hfState.currentTime))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(palette.textSecondary)
+                Spacer()
+                Text("-" + formatTime(max(0, duration - hfState.currentTime)))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(palette.textTertiary)
+                Spacer()
+                Text(formatTime(duration))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(palette.textSecondary)
+            }
+        }
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard !seconds.isNaN && seconds.isFinite else { return "0:00" }
+        let m = Int(seconds) / 60
+        let s = Int(seconds) % 60
+        return String(format: "%d:%02d", m, s)
     }
 }

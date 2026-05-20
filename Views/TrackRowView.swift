@@ -43,7 +43,6 @@ struct TrackRowView: View {
             }
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(palette.stroke, lineWidth: 1))
             .scaleEffect(isHovered ? 1.06 : 1.0)
-            .animation(.spring(response: 0.22, dampingFraction: 0.58), value: isHovered)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
@@ -56,7 +55,6 @@ struct TrackRowView: View {
                     .lineLimit(1)
             }
             .offset(x: isHovered ? 5 : 0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.65), value: isHovered)
 
             Spacer()
 
@@ -64,14 +62,16 @@ struct TrackRowView: View {
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
                 .foregroundColor(isActive ? palette.accent.opacity(0.85) : palette.textTertiary)
                 .scaleEffect(isHovered ? 1.05 : 1.0)
-                .animation(.spring(response: 0.24, dampingFraction: 0.62), value: isHovered)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isActive ? palette.accent.opacity(0.18) : (isHovered ? palette.inset.opacity(0.4) : Color.clear))
-                .shadow(color: isActive ? palette.accent.opacity(0.35) : (isHovered ? palette.cardShadow.opacity(0.08) : Color.clear), radius: isHovered ? 10 : 8, x: 0, y: 3)
+                .shadow(color: isActive ? palette.accent.opacity(0.35) : (isHovered ? palette.cardShadow.opacity(0.08) : .clear),
+                        radius: (isActive || isHovered) ? (isHovered ? 10 : 8) : 0,
+                        x: 0,
+                        y: (isActive || isHovered) ? 3 : 0)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -79,7 +79,7 @@ struct TrackRowView: View {
         )
         .contentShape(Rectangle())
         .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.spring(response: 0.24, dampingFraction: 0.65), value: isHovered)
+        .animation(.spring(response: 0.25, dampingFraction: 0.70), value: isHovered)
         .onTapGesture {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.75)) {
                 viewModel.playTrack(track, in: album)

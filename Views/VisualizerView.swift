@@ -6,7 +6,7 @@ enum VisualizerMode: String {
 }
 
 struct VisualizerView: View {
-    let bars: [Double]
+    @ObservedObject var hfState: HighFrequencyState
     let isPlaying: Bool
     @State var mode: VisualizerMode = .bars
     @EnvironmentObject var themeManager: ThemeManager
@@ -20,9 +20,9 @@ struct VisualizerView: View {
             // Visualizer container — single Canvas redraw, no per-cell animations.
             ZStack {
                 if mode == .bars {
-                    BarsCanvas(bars: bars, isDark: themeManager.theme == .dark, palette: palette)
+                    BarsCanvas(bars: hfState.visualizerBars, isDark: themeManager.theme == .dark, palette: palette)
                 } else {
-                    WaveCanvas(bars: bars, isPlaying: isPlaying, palette: palette)
+                    WaveCanvas(bars: hfState.visualizerBars, isPlaying: isPlaying, palette: palette)
                 }
             }
             .frame(minHeight: 130)

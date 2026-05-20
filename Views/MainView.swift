@@ -4,12 +4,8 @@ struct MainView: View {
     @ObservedObject var viewModel: PlayerViewModel
     @EnvironmentObject var themeManager: ThemeManager
     @State private var showSettings = false
-    @State private var artGlowPhase: Double = 0
     @State private var isHoveringControls = false
     @State private var isWindowKey = true
-    @State private var ambientBreath: Double = 0.9
-    @State private var parallaxOffset: CGSize = .zero
-    @State private var isHoveringArt = false
 
     private var palette: Palette { themeManager.theme.palette }
 
@@ -19,8 +15,7 @@ struct MainView: View {
             ambientBackdrop.allowsHitTesting(false)
             
             // Cosmic Bass Dust background layer
-            let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
-            CosmicDustView(isPlaying: viewModel.isPlaying, intensity: intensity, palette: palette)
+            CosmicDustView(isPlaying: viewModel.isPlaying, palette: palette)
                 .allowsHitTesting(false)
                 .ignoresSafeArea()
 
@@ -50,12 +45,6 @@ struct MainView: View {
         .animation(.easeInOut(duration: 0.30), value: themeManager.theme)
         .animation(.easeInOut(duration: 0.25), value: viewModel.sidebarCollapsed)
         .onAppear {
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                artGlowPhase = 1
-            }
-            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true)) {
-                ambientBreath = 1.15
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
             if let window = notification.object as? NSWindow, window == WindowController.shared.window {
@@ -74,20 +63,11 @@ struct MainView: View {
         let colors = viewModel.currentAmbientColors.isEmpty
             ? (viewModel.currentTrack?.ambientColors ?? [palette.accent, palette.accentSecondary])
             : viewModel.currentAmbientColors
-        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
-        let dynamicBreath = ambientBreath * (1.0 + (viewModel.isPlaying ? intensity * 0.12 : 0.0))
-
-        return ZStack {
-            Circle().fill(colors[0].opacity((themeManager.theme == .dark ? 0.12 : 0.10) * (dynamicBreath * 0.8 + 0.2)))
-                .frame(width: 360 * dynamicBreath, height: 360 * dynamicBreath)
-                .blur(radius: 90)
-                .offset(x: -260, y: -180)
-            Circle().fill(colors[1].opacity((themeManager.theme == .dark ? 0.10 : 0.08) * (dynamicBreath * 0.8 + 0.2)))
-                .frame(width: 380 * dynamicBreath, height: 380 * dynamicBreath)
-                .blur(radius: 100)
-                .offset(x: 320, y: 220)
-        }
-        .animation(.easeInOut(duration: 1.5), value: colors)
+        return AmbientBackdropView(
+            isPlaying: viewModel.isPlaying,
+            ambientColors: colors,
+            isDark: themeManager.theme == .dark
+        )
     }
 
     // MARK: - Column 1 — Albums
@@ -301,7 +281,7 @@ struct MainView: View {
             }
             .padding(.horizontal, 22)
 
-            VisualizerView(bars: viewModel.visualizerBars, isPlaying: viewModel.isPlaying)
+            VisualizerView(hfState: viewModel.hfState, isPlaying: viewModel.isPlaying)
                 .environmentObject(themeManager)
 
             PlayerControls(viewModel: viewModel)
@@ -313,101 +293,13 @@ struct MainView: View {
     }
 
     private var albumArt: some View {
-        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
-        let dynamicScale = 1.0 + (viewModel.isPlaying ? intensity * 0.08 : 0.0)
-        let dynamicBlur = 22 + (viewModel.isPlaying ? CGFloat(intensity * 18.0) : 0.0)
-        let dynamicOpacity = viewModel.isPlaying ? (0.40 + 0.25 * artGlowPhase + intensity * 0.35) : 0.12
-        let artSize: CGFloat = 160
-
-        return ZStack {
-            // Ambient glowing back shadow matching the album art colors
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: palette.accentGradient,
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: artSize, height: artSize)
-                .blur(radius: dynamicBlur)
-                .opacity(dynamicOpacity)
-                .scaleEffect(dynamicScale)
-
-            // High-fidelity square album art card (no vinyl, matches the new premium spec)
-            ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(palette.inset)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(palette.strokeStrong, lineWidth: 1)
-                    )
-
-                if let track = viewModel.currentTrack {
-                    Group {
-                        if let url = track.albumArtUrl, url.hasPrefix("http") {
-                            AsyncImage(url: URL(string: url)) { image in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                ProgressView().scaleEffect(0.6)
-                            }
-                        } else {
-                            ZStack {
-                                LinearGradient(
-                                    colors: [palette.accent.opacity(0.35), palette.accentSecondary.opacity(0.35)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                Image(systemName: track.albumArtUrl ?? "music.note")
-                                    .font(.system(size: 38, weight: .bold))
-                                    .foregroundColor(palette.textPrimary)
-                            }
-                        }
-                    }
-                    .frame(width: artSize - 8, height: artSize - 8)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    
-                    // Specular gloss reflection overlay matching main UI
-                    LinearGradient(
-                        colors: [.white.opacity(0.24), .clear, .white.opacity(0.12)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .frame(width: artSize - 8, height: artSize - 8)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .blendMode(.overlay)
-                    .allowsHitTesting(false)
-                }
-            }
-            .frame(width: artSize, height: artSize)
-            .scaleEffect(dynamicScale)
-        }
-        .frame(width: artSize, height: artSize)
-        .scaleEffect(isHoveringArt ? 1.06 : 1.0)
-        .offset(y: viewModel.isPlaying ? CGFloat(sin(artGlowPhase * .pi * 2.0) * 5.0) : 0.0)
-        .rotationEffect(.degrees(viewModel.isPlaying ? cos(artGlowPhase * .pi * 2.0) * 2.0 : 0.0))
-        .rotation3DEffect(.degrees(Double(parallaxOffset.width / 5.0)), axis: (x: 0, y: 1, z: 0))
-        .rotation3DEffect(.degrees(Double(-parallaxOffset.height / 5.0)), axis: (x: 1, y: 0, z: 0))
-        .shadow(color: palette.accent.opacity(isHoveringArt ? 0.25 : 0.0), radius: 15, x: 0, y: 8)
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                .onChanged { val in
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
-                        parallaxOffset = CGSize(width: val.location.x - artSize/2, height: val.location.y - artSize/2)
-                    }
-                }
-                .onEnded { _ in
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
-                        parallaxOffset = .zero
-                    }
-                }
+        AlbumArtView(
+            hfState: viewModel.hfState,
+            isPlaying: viewModel.isPlaying,
+            currentTrack: viewModel.currentTrack,
+            palette: palette,
+            togglePlayPauseAction: { viewModel.togglePlayPause() }
         )
-        .onHover { hovering in
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.68)) {
-                isHoveringArt = hovering
-            }
-        }
-        .onTapGesture(count: 2) {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.45)) {
-                viewModel.togglePlayPause()
-            }
-        }
     }
 
     // MARK: - Settings overlay
@@ -642,6 +534,152 @@ struct MainView: View {
     }
 }
 
+// MARK: - Standalone High-Performance Breathing Backglow Backdrop View
+struct AmbientBackdropView: View {
+    let isPlaying: Bool
+    let ambientColors: [Color]
+    let isDark: Bool
+    
+    @State private var ambientBreath: Double = 0.95
+
+    var body: some View {
+        let dynamicBreath = ambientBreath
+
+        return ZStack {
+            Circle().fill(ambientColors[0].opacity((isDark ? 0.12 : 0.10) * (dynamicBreath * 0.8 + 0.2)))
+                .frame(width: 360 * dynamicBreath, height: 360 * dynamicBreath)
+                .blur(radius: 90)
+                .offset(x: -260, y: -180)
+            Circle().fill(ambientColors[1].opacity((isDark ? 0.10 : 0.08) * (dynamicBreath * 0.8 + 0.2)))
+                .frame(width: 380 * dynamicBreath, height: 380 * dynamicBreath)
+                .blur(radius: 100)
+                .offset(x: 320, y: 220)
+        }
+        .animation(.easeInOut(duration: 1.5), value: ambientColors)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 6.0).repeatForever(autoreverses: true)) {
+                ambientBreath = 1.12
+            }
+        }
+    }
+}
+
+// MARK: - Standalone High-Frequency 3D Parallax Album Art View
+struct AlbumArtView: View {
+    @ObservedObject var hfState: HighFrequencyState
+    let isPlaying: Bool
+    let currentTrack: Track?
+    let palette: Palette
+    let togglePlayPauseAction: () -> Void
+
+    @State private var artGlowPhase: Double = 0
+    @State private var isHoveringArt = false
+    @State private var parallaxOffset: CGSize = .zero
+
+    var body: some View {
+        let intensity = hfState.visualizerBars.reduce(0.0, +) / max(1.0, Double(hfState.visualizerBars.count))
+        let dynamicScale = 1.0 + (isPlaying ? intensity * 0.08 : 0.0)
+        let dynamicBlur = 22 + (isPlaying ? CGFloat(intensity * 18.0) : 0.0)
+        let dynamicOpacity = isPlaying ? (0.40 + 0.25 * artGlowPhase + intensity * 0.35) : 0.12
+        let artSize: CGFloat = 160
+
+        return ZStack {
+            // Ambient glowing back shadow matching the album art colors
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(colors: palette.accentGradient,
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: artSize, height: artSize)
+                .blur(radius: dynamicBlur)
+                .opacity(dynamicOpacity)
+                .scaleEffect(dynamicScale)
+
+            // High-fidelity square album art card (no vinyl, matches the new premium spec)
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(palette.inset)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(palette.strokeStrong, lineWidth: 1)
+                    )
+
+                if let track = currentTrack {
+                    Group {
+                        if let url = track.albumArtUrl, url.hasPrefix("http") {
+                            AsyncImage(url: URL(string: url)) { image in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                ProgressView().scaleEffect(0.6)
+                            }
+                        } else {
+                            ZStack {
+                                LinearGradient(
+                                    colors: [palette.accent.opacity(0.35), palette.accentSecondary.opacity(0.35)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                Image(systemName: track.albumArtUrl ?? "music.note")
+                                    .font(.system(size: 38, weight: .bold))
+                                    .foregroundColor(palette.textPrimary)
+                            }
+                        }
+                    }
+                    .frame(width: artSize - 8, height: artSize - 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    
+                    // Specular gloss reflection overlay matching main UI
+                    LinearGradient(
+                        colors: [.white.opacity(0.24), .clear, .white.opacity(0.12)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: artSize - 8, height: artSize - 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .blendMode(.overlay)
+                    .allowsHitTesting(false)
+                }
+            }
+            .frame(width: artSize, height: artSize)
+            .scaleEffect(dynamicScale)
+        }
+        .frame(width: artSize, height: artSize)
+        .scaleEffect(isHoveringArt ? 1.06 : 1.0)
+        .offset(y: isPlaying ? CGFloat(sin(artGlowPhase * .pi * 2.0) * 5.0) : 0.0)
+        .rotationEffect(.degrees(isPlaying ? cos(artGlowPhase * .pi * 2.0) * 2.0 : 0.0))
+        .rotation3DEffect(.degrees(Double(parallaxOffset.width / 5.0)), axis: (x: 0, y: 1, z: 0))
+        .rotation3DEffect(.degrees(Double(-parallaxOffset.height / 5.0)), axis: (x: 1, y: 0, z: 0))
+        .shadow(color: palette.accent.opacity(isHoveringArt ? 0.25 : 0.0), radius: 15, x: 0, y: 8)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged { val in
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+                        parallaxOffset = CGSize(width: val.location.x - artSize/2, height: val.location.y - artSize/2)
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                        parallaxOffset = .zero
+                    }
+                }
+        )
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.68)) {
+                isHoveringArt = hovering
+            }
+        }
+        .onTapGesture(count: 2) {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.45)) {
+                togglePlayPauseAction()
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+                artGlowPhase = 1
+            }
+        }
+    }
+}
+
 // MARK: - Transitions
 struct RotationPerspectiveModifier: ViewModifier {
     let angle: Double
@@ -658,83 +696,4 @@ struct RotationPerspectiveModifier: ViewModifier {
 
 
 
-// MARK: - Cosmic Bass Dust Particles
-struct DustParticle: Identifiable {
-    let id = UUID()
-    var x: Double
-    var y: Double
-    var vx: Double
-    var vy: Double
-    var size: Double
-    var opacity: Double
-    var color: Color
-}
 
-struct CosmicDustView: View {
-    let isPlaying: Bool
-    let intensity: Double
-    let palette: Palette
-    
-    @State private var particles: [DustParticle] = []
-    @State private var hasGenerated = false
-    
-    var body: some View {
-        GeometryReader { geo in
-            TimelineView(.animation) { timeline in
-                Canvas(rendersAsynchronously: true) { ctx, size in
-                    for p in particles {
-                        let rect = CGRect(x: p.x, y: p.y, width: p.size, height: p.size)
-                        let path = Path(ellipseIn: rect)
-                        ctx.fill(path, with: .color(p.color.opacity(p.opacity * (isPlaying ? 0.95 : 0.40))))
-                    }
-                }
-                .onAppear {
-                    if !hasGenerated {
-                        generateParticles(in: geo.size)
-                        hasGenerated = true
-                    }
-                }
-                .onChange(of: timeline.date) { _ in
-                    updateParticles(in: geo.size)
-                }
-            }
-        }
-    }
-    
-    private func generateParticles(in size: CGSize) {
-        var list: [DustParticle] = []
-        let colors = [palette.accent, palette.accentSecondary, palette.textPrimary]
-        for _ in 0..<75 {
-            let x = Double.random(in: 0...Double(size.width))
-            let y = Double.random(in: 0...Double(size.height))
-            let angle = Double.random(in: 0...(2.0 * .pi))
-            let speed = Double.random(in: 0.15...0.45) // Elegant constant slow drift speed
-            list.append(DustParticle(
-                x: x,
-                y: y,
-                vx: cos(angle) * speed,
-                vy: sin(angle) * speed,
-                size: Double.random(in: 1.0...2.6),
-                opacity: Double.random(in: 0.10...0.50),
-                color: colors.randomElement() ?? palette.accent
-            ))
-        }
-        particles = list
-    }
-    
-    private func updateParticles(in size: CGSize) {
-        for i in 0..<particles.count {
-            // Constant smooth floating motion
-            particles[i].x += particles[i].vx
-            particles[i].y += particles[i].vy
-            
-            // Warp boundaries smoothly
-            let pad = 24.0
-            if particles[i].x < -pad { particles[i].x = Double(size.width) + pad }
-            else if particles[i].x > Double(size.width) + pad { particles[i].x = -pad }
-            
-            if particles[i].y < -pad { particles[i].y = Double(size.height) + pad }
-            else if particles[i].y > Double(size.height) + pad { particles[i].y = -pad }
-        }
-    }
-}

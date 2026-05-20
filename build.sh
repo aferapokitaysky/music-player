@@ -23,6 +23,7 @@ swiftc \
     Theme.swift \
     Persistence.swift \
     PlayerViewModel.swift \
+    Views/CosmicDustView.swift \
     Views/ServiceLogos.swift \
     Views/VisualizerView.swift \
     Views/PlayerControls.swift \

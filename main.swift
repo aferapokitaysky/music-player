@@ -203,19 +203,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let notchView = NotchMiniPlayerView(viewModel: viewModel)
             .environmentObject(themeManager)
         let hostingView = NSHostingView(rootView: notchView)
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: wWidth, height: wHeight))
-        container.addSubview(hostingView)
-        
-        NSLayoutConstraint.activate([
-            hostingView.topAnchor.constraint(equalTo: container.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: container.trailingAnchor)
-        ])
-        
-        notchWin.contentView = container
+        notchWin.contentView = hostingView
         notchWin.orderFrontRegardless()
         
         self.notchWindow = notchWin
