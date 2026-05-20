@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NotchMiniPlayerView: View {
     @ObservedObject var viewModel: PlayerViewModel
-    @EnvironmentObject var themeManager: ThemeManager
+    @ObservedObject var themeManager = ThemeManager.shared
     @State private var isHovered = false
     
     private var palette: Palette { themeManager.theme.palette }
@@ -20,17 +20,17 @@ struct NotchMiniPlayerView: View {
                     collapsedContent
                 }
             }
-            .padding(.top, isHovered ? 38 : 0) // Perfectly pushes active content below the physical notch bezel
+            .padding(.top, isHovered ? 36 : 0) // Safe 36pt top padding to clear MacBook Air/Pro physical notch bezels
             .padding(.horizontal, isHovered ? 16 : 8)
-            // Collapsed size is exactly the size of the notch (200x38).
-            // Expanded size covers the 38pt notch depth + 108pt of active controls (460x146).
-            .frame(width: isHovered ? 460 : 200, height: isHovered ? 146 : 38)
+            // Collapsed size is 140x30, completely safe within any standard MacBook notch (e.g. Air is 150x32, Pro is 162x37)
+            // Expanded size is 460x138, fitting perfectly below the notch area
+            .frame(width: isHovered ? 460 : 140, height: isHovered ? 138 : 30)
             .background(
                 CustomRoundedCorner(
                     topLeft: 0,
                     topRight: 0,
-                    bottomLeft: isHovered ? 24 : 10,
-                    bottomRight: isHovered ? 24 : 10
+                    bottomLeft: isHovered ? 24 : 0,
+                    bottomRight: isHovered ? 24 : 0
                 )
                 .fill(themeManager.theme == .dark 
                       ? Color.black.opacity(0.85) 
@@ -39,8 +39,8 @@ struct NotchMiniPlayerView: View {
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
-                        bottomLeft: isHovered ? 24 : 10,
-                        bottomRight: isHovered ? 24 : 10
+                        bottomLeft: isHovered ? 24 : 0,
+                        bottomRight: isHovered ? 24 : 0
                     )
                     .fill(palette.sidebar.opacity(0.65))
                 )
@@ -48,11 +48,12 @@ struct NotchMiniPlayerView: View {
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
-                        bottomLeft: isHovered ? 24 : 10,
-                        bottomRight: isHovered ? 24 : 10
+                        bottomLeft: isHovered ? 24 : 0,
+                        bottomRight: isHovered ? 24 : 0
                     )
                     .stroke(palette.strokeStrong, lineWidth: 1.2)
                 )
+                .opacity(isHovered ? 1.0 : 0.0) // 100% invisible when collapsed, revealing only the physical screen notch bezel!
             )
             .shadow(color: palette.cardShadow.opacity(isHovered ? 0.40 : 0.0), radius: isHovered ? 16 : 0, y: isHovered ? 10 : 0)
             .contentShape(Rectangle())

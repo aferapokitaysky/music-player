@@ -198,6 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         notchWin.acceptsMouseMovedEvents = true
         notchWin.canHide = false
         notchWin.hidesOnDeactivate = false
+        notchWin.appearance = themeManager.theme.nsAppearance
         
         let notchView = NotchMiniPlayerView(viewModel: viewModel)
             .environmentObject(themeManager)
@@ -219,7 +220,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         self.notchWindow = notchWin
     }
-
+ 
     @objc private func applyTheme() {
         guard let view = visualEffectView else { return }
         NSAnimationContext.runAnimationGroup { ctx in
@@ -227,6 +228,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             ctx.allowsImplicitAnimation = true
             view.material = themeManager.theme.nsMaterial
             view.appearance = themeManager.theme.nsAppearance
+            notchWindow?.appearance = themeManager.theme.nsAppearance
             let borderAlpha: CGFloat = themeManager.theme == .dark ? 0.10 : 0.20
             view.layer?.borderColor = (themeManager.theme == .dark
                 ? NSColor.white.withAlphaComponent(borderAlpha)
