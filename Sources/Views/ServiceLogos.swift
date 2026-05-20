@@ -4,10 +4,11 @@ struct ServiceLogosHelper {
     static func findLocalPath(for filename: String) -> String? {
         let fm = FileManager.default
         let paths = [
-            fm.currentDirectoryPath + "/" + filename,
-            fm.currentDirectoryPath + "/aesthetic-player/" + filename,
-            "/Users/korova/Desktop/massegnger/aesthetic-player/" + filename,
-            "/Users/korova/Desktop/massegnger/" + filename
+            fm.currentDirectoryPath + "/Sources/Resources/" + filename,
+            fm.currentDirectoryPath + "/aesthetic-player/Sources/Resources/" + filename,
+            "/Users/korova/Desktop/massegnger/aesthetic-player/Sources/Resources/" + filename,
+            "/Users/korova/Desktop/massegnger/" + filename,
+            fm.currentDirectoryPath + "/" + filename
         ]
         for path in paths {
             if fm.fileExists(atPath: path) {

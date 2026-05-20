@@ -110,11 +110,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.acceptsMouseMovedEvents = true
 
         window.center()
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.hasShadow = true
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.hasShadow = false
         window.delegate = self
         window.minSize = NSSize(width: 980, height: 580)
 

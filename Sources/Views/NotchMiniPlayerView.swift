@@ -47,7 +47,7 @@ struct NotchMiniPlayerView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .clipShape(
+                .mask(
                     CustomRoundedCorner(
                         topLeft: 0,
                         topRight: 0,
@@ -74,6 +74,14 @@ struct NotchMiniPlayerView: View {
                     .stroke(palette.strokeStrong, lineWidth: 1.2)
                 )
                 .opacity(isHovered ? 1.0 : 0.0) // 100% invisible when collapsed, revealing only the physical screen notch bezel!
+            )
+            .clipShape(
+                CustomRoundedCorner(
+                    topLeft: 0,
+                    topRight: 0,
+                    bottomLeft: isHovered ? 24 : 12,
+                    bottomRight: isHovered ? 24 : 12
+                )
             )
             .shadow(color: palette.cardShadow.opacity(isHovered ? 0.40 : 0.0), radius: isHovered ? 16 : 0, y: isHovered ? 10 : 0)
             .contentShape(Rectangle())
@@ -330,32 +338,59 @@ struct CustomRoundedCorner: Shape {
 }
 
 // MARK: - Native macOS Glassmorphic Visual Effect View
+class RoundedVisualEffectView: NSVisualEffectView {
+    var bottomRadius: CGFloat = 0 {
+        didSet { if oldValue != bottomRadius { needsLayout = true } }
+    }
+    
+    override func layout() {
+        super.layout()
+        guard bounds.width > 0 && bounds.height > 0 else { return }
+        
+        let image = NSImage(size: bounds.size)
+        image.lockFocus()
+        NSColor.clear.set()
+        NSRect(origin: .zero, size: bounds.size).fill()
+        
+        let path = NSBezierPath()
+        let w = bounds.width
+        let h = bounds.height
+        let r = bottomRadius
+        
+        path.move(to: NSPoint(x: 0, y: h))
+        path.line(to: NSPoint(x: w, y: h))
+        path.line(to: NSPoint(x: w, y: r))
+        path.appendArc(withCenter: NSPoint(x: w - r, y: r), radius: r, startAngle: 0, endAngle: 270, clockwise: true)
+        path.line(to: NSPoint(x: r, y: 0))
+        path.appendArc(withCenter: NSPoint(x: r, y: r), radius: r, startAngle: 270, endAngle: 180, clockwise: true)
+        path.close()
+        
+        NSColor.black.set()
+        path.fill()
+        
+        image.unlockFocus()
+        image.isTemplate = true
+        self.maskImage = image
+    }
+}
+
 struct VisualEffectView: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
     let cornerRadius: CGFloat
     
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
+    func makeNSView(context: Context) -> RoundedVisualEffectView {
+        let view = RoundedVisualEffectView()
         view.material = material
         view.blendingMode = blendingMode
         view.state = .active
-        
-        view.wantsLayer = true
-        view.layer?.cornerRadius = cornerRadius
-        view.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
-        view.layer?.masksToBounds = true
-        
+        view.bottomRadius = cornerRadius
         return view
     }
     
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+    func updateNSView(_ nsView: RoundedVisualEffectView, context: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
-        
-        nsView.wantsLayer = true
-        nsView.layer?.cornerRadius = cornerRadius
-        nsView.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
-        nsView.layer?.masksToBounds = true
+        nsView.bottomRadius = cornerRadius
     }
 }
