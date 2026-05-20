@@ -4,6 +4,9 @@ struct PlayerControls: View {
     @ObservedObject var viewModel: PlayerViewModel
     @EnvironmentObject var themeManager: ThemeManager
 
+    @State private var isHoveringTimeline = false
+    @State private var isHoveringVolume = false
+
     private var palette: Palette { themeManager.theme.palette }
 
     var body: some View {
@@ -14,11 +17,13 @@ struct PlayerControls: View {
                     let progress = (viewModel.currentTrack?.duration ?? 0) > 0
                         ? viewModel.currentTime / (viewModel.currentTrack?.duration ?? 1)
                         : 0.0
+                    let trackHeight: CGFloat = isHoveringTimeline ? 9 : 5
+                    let knobSize: CGFloat = isHoveringTimeline ? 18 : 13
 
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(palette.inset)
-                            .frame(height: 6)
+                            .frame(height: trackHeight)
                             .overlay(
                                 Capsule().stroke(palette.stroke, lineWidth: 1)
                             )
@@ -27,20 +32,20 @@ struct PlayerControls: View {
                             .fill(LinearGradient(colors: palette.progressGradient,
                                                  startPoint: .leading, endPoint: .trailing))
                             .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(progress))),
-                                   height: 6)
-                            .shadow(color: palette.glow, radius: 4)
+                                   height: trackHeight)
+                            .shadow(color: palette.glow, radius: isHoveringTimeline ? 6 : 3)
 
                         Circle()
                             .fill(palette.textPrimary)
-                            .frame(width: 14, height: 14)
+                            .frame(width: knobSize, height: knobSize)
                             .overlay(
                                 Circle()
                                     .stroke(LinearGradient(colors: palette.progressGradient,
                                                            startPoint: .leading, endPoint: .trailing),
                                             lineWidth: 2)
                             )
-                            .shadow(color: palette.cardShadow, radius: 3, x: 0, y: 2)
-                            .offset(x: max(0, min(geo.size.width - 14, geo.size.width * CGFloat(progress) - 7)))
+                            .shadow(color: palette.cardShadow, radius: isHoveringTimeline ? 4 : 2, x: 0, y: isHoveringTimeline ? 3 : 1)
+                            .offset(x: max(0, min(geo.size.width - knobSize, geo.size.width * CGFloat(progress) - knobSize / 2.0)))
                     }
                     .contentShape(Rectangle())
                     .gesture(
@@ -53,8 +58,13 @@ struct PlayerControls: View {
                                 viewModel.seek(to: targetTime)
                             }
                     )
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+                            isHoveringTimeline = hovering
+                        }
+                    }
                 }
-                .frame(height: 14)
+                .frame(height: isHoveringTimeline ? 18 : 14)
 
                 HStack {
                     Text(formatTime(viewModel.currentTime))
@@ -74,48 +84,44 @@ struct PlayerControls: View {
 
             // Primary controls
             HStack(spacing: 22) {
-                iconButton(
-                    "shuffle",
+                ControlIconButton(
+                    system: "shuffle",
+                    size: 14,
                     active: viewModel.isShuffle,
-                    accent: palette.accent
-                ) { viewModel.toggleShuffle() }
+                    accentColor: palette.accent,
+                    palette: palette,
+                    action: { viewModel.toggleShuffle() }
+                )
 
-                iconButton("backward.fill", size: 18) { viewModel.prevTrack() }
+                ControlIconButton(
+                    system: "backward.fill",
+                    size: 18,
+                    active: false,
+                    accentColor: nil,
+                    palette: palette,
+                    action: { viewModel.prevTrack() }
+                )
 
-                // Big play/pause
-                Button(action: { viewModel.togglePlayPause() }) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(
-                                colors: viewModel.isPlaying ? palette.pauseGradient : palette.playGradient,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
-                            .frame(width: 58, height: 58)
-                            .shadow(
-                                color: (viewModel.isPlaying ? palette.accentSecondary : palette.accent).opacity(0.55),
-                                radius: 14, x: 0, y: 6
-                            )
+                // Animated elastic Play/Pause
+                PlayPauseButton(viewModel: viewModel, palette: palette)
 
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
-                            .frame(width: 58, height: 58)
+                ControlIconButton(
+                    system: "forward.fill",
+                    size: 18,
+                    active: false,
+                    accentColor: nil,
+                    palette: palette,
+                    action: { viewModel.nextTrack() }
+                )
 
-                        Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 22, weight: .heavy))
-                            .foregroundColor(.white)
-                            .offset(x: viewModel.isPlaying ? 0 : 2)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                iconButton("forward.fill", size: 18) { viewModel.nextTrack() }
-
-                iconButton(
-                    "repeat",
+                ControlIconButton(
+                    system: "repeat",
+                    size: 14,
                     active: viewModel.isRepeat,
-                    accent: palette.accentSecondary
-                ) { viewModel.toggleRepeat() }
+                    accentColor: palette.accentSecondary,
+                    palette: palette,
+                    action: { viewModel.toggleRepeat() }
+                )
             }
 
             // Volume
@@ -126,18 +132,21 @@ struct PlayerControls: View {
                     .frame(width: 16)
 
                 GeometryReader { geo in
+                    let trackHeight: CGFloat = isHoveringVolume ? 7 : 4
+                    let knobSize: CGFloat = isHoveringVolume ? 14 : 9
+
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(palette.inset)
-                            .frame(height: 4)
+                            .frame(height: trackHeight)
                         Capsule()
                             .fill(palette.textPrimary.opacity(0.85))
-                            .frame(width: geo.size.width * CGFloat(viewModel.volume), height: 4)
+                            .frame(width: geo.size.width * CGFloat(viewModel.volume), height: trackHeight)
                         Circle()
                             .fill(palette.textPrimary)
-                            .frame(width: 10, height: 10)
-                            .shadow(color: palette.cardShadow, radius: 2)
-                            .offset(x: max(0, min(geo.size.width - 10, geo.size.width * CGFloat(viewModel.volume) - 5)))
+                            .frame(width: knobSize, height: knobSize)
+                            .shadow(color: palette.cardShadow, radius: isHoveringVolume ? 3 : 2)
+                            .offset(x: max(0, min(geo.size.width - knobSize, geo.size.width * CGFloat(viewModel.volume) - knobSize / 2.0)))
                     }
                     .contentShape(Rectangle())
                     .gesture(
@@ -147,8 +156,13 @@ struct PlayerControls: View {
                                 viewModel.volume = max(0, min(1.0, percentage))
                             }
                     )
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+                            isHoveringVolume = hovering
+                        }
+                    }
                 }
-                .frame(height: 12)
+                .frame(height: isHoveringVolume ? 16 : 12)
 
                 Text("\(Int(viewModel.volume * 100))")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
@@ -159,29 +173,6 @@ struct PlayerControls: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 8)
-    }
-
-    // MARK: - Helpers
-    private func iconButton(_ system: String,
-                            size: CGFloat = 14,
-                            active: Bool = false,
-                            accent: Color? = nil,
-                            action: @escaping () -> Void) -> some View {
-        let highlight = accent ?? palette.accent
-        return Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: size, weight: .bold))
-                .foregroundColor(active ? highlight : palette.textPrimary.opacity(0.85))
-                .frame(width: 36, height: 36)
-                .background(
-                    Circle().fill(active ? highlight.opacity(0.18) : Color.clear)
-                )
-                .overlay(
-                    Circle().stroke(active ? highlight.opacity(0.45) : Color.clear, lineWidth: 1)
-                )
-                .shadow(color: active ? highlight.opacity(0.55) : .clear, radius: 6)
-        }
-        .buttonStyle(.plain)
     }
 
     private var volumeIcon: String {
@@ -195,5 +186,86 @@ struct PlayerControls: View {
         let m = Int(seconds) / 60
         let s = Int(seconds) % 60
         return String(format: "%02d:%02d", m, s)
+    }
+}
+
+// MARK: - Reusable Animated Control Button
+struct ControlIconButton: View {
+    let system: String
+    var size: CGFloat = 14
+    let active: Bool
+    let accentColor: Color?
+    let palette: Palette
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        let highlight = accentColor ?? palette.accent
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: size, weight: .bold))
+                .foregroundColor(active ? highlight : (isHovered ? palette.accent : palette.textPrimary.opacity(0.85)))
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle().fill(active ? highlight.opacity(0.18) : (isHovered ? palette.cardElevated : Color.clear))
+                )
+                .overlay(
+                    Circle().stroke(active ? highlight.opacity(0.45) : (isHovered ? palette.strokeStrong : Color.clear), lineWidth: 1)
+                )
+                .shadow(color: active ? highlight.opacity(0.55) : (isHovered ? palette.glow.opacity(0.3) : .clear), radius: isHovered ? 8 : 6)
+                .scaleEffect(isHovered ? 1.12 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.54)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Reusable Bouncy Play/Pause Button
+struct PlayPauseButton: View {
+    @ObservedObject var viewModel: PlayerViewModel
+    let palette: Palette
+    @State private var isHovered = false
+
+    var body: some View {
+        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
+        let dynamicGlow = viewModel.isPlaying ? CGFloat(intensity * 14.0) : 0.0
+
+        Button(action: { viewModel.togglePlayPause() }) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(
+                        colors: viewModel.isPlaying ? palette.pauseGradient : palette.playGradient,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 58, height: 58)
+                    .shadow(
+                        color: (viewModel.isPlaying ? palette.accentSecondary : palette.accent).opacity(isHovered ? 0.85 : 0.55),
+                        radius: (isHovered ? 18 : 14) + dynamicGlow, x: 0, y: isHovered ? 8 : 6
+                    )
+
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
+                    .frame(width: 58, height: 58)
+
+                Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 22, weight: .heavy))
+                    .foregroundColor(.white)
+                    .offset(x: viewModel.isPlaying ? 0 : 2)
+            }
+            .scaleEffect(isHovered ? 1.08 : 1.0)
+            .scaleEffect(viewModel.isPlaying ? 0.95 : 1.0)
+            .animation(.spring(response: 0.28, dampingFraction: 0.52), value: isHovered)
+            .animation(.spring(response: 0.32, dampingFraction: 0.45), value: viewModel.isPlaying)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }

@@ -1,6 +1,8 @@
 import Foundation
 import AVFoundation
 import Combine
+import SwiftUI
+import MediaPlayer
 
 struct Track: Identifiable, Equatable, Hashable, Codable {
     let id: String
@@ -9,6 +11,28 @@ struct Track: Identifiable, Equatable, Hashable, Codable {
     let albumArtUrl: String?
     let audioUrl: String
     let duration: Double // in seconds
+
+    // Apple Music style ambient colors generated dynamically or by brand
+    var ambientColors: [Color] {
+        if id.hasPrefix("spotify") {
+            return [
+                Color(red: 0.117, green: 0.843, blue: 0.376), // Spotify Green
+                Color(red: 0.05, green: 0.15, blue: 0.05)
+            ]
+        } else if id.hasPrefix("sc_") {
+            return [
+                Color(red: 1.000, green: 0.333, blue: 0.000), // SoundCloud Orange
+                Color(red: 0.20, green: 0.08, blue: 0.0)
+            ]
+        }
+        let hashVal = abs(title.hashValue ^ artist.hashValue)
+        let hue1 = Double(hashVal % 360) / 360.0
+        let hue2 = Double((hashVal + 140) % 360) / 360.0
+        return [
+            Color(hue: hue1, saturation: 0.68, brightness: 0.85),
+            Color(hue: hue2, saturation: 0.60, brightness: 0.70)
+        ]
+    }
 }
 
 enum AlbumKind: String, Codable {
@@ -42,6 +66,12 @@ class PlayerViewModel: ObservableObject {
 
     // UI state
     @Published var sidebarCollapsed = false
+    @Published var uiOpacity: Double = UserDefaults.standard.double(forKey: "uiOpacity") == 0 ? 0.60 : UserDefaults.standard.double(forKey: "uiOpacity") {
+        didSet {
+            UserDefaults.standard.set(uiOpacity, forKey: "uiOpacity")
+        }
+    }
+    @Published var currentAmbientColors: [Color] = []
 
     // Services / Inputs
     @Published var spotifyToken = ""
@@ -70,6 +100,7 @@ class PlayerViewModel: ObservableObject {
     private var timeObserver: Any?
     private var visualizerTimer: Timer?
     private var beatCounter = 0.0
+    private static var scClientId: String? = nil
     
     // Preloaded Demo Tracks
     private let demoTracks = [
@@ -112,6 +143,10 @@ class PlayerViewModel: ObservableObject {
         if let saved = Keychain.load(account: "soundcloud_oauth") {
             self.soundCloudOAuth = saved
         }
+        // Restore Spotify Token if present
+        if let savedSpotify = Keychain.load(account: "spotify_token") {
+            self.spotifyToken = savedSpotify
+        }
 
         // Try to load cached library; fall back to demo album
         let cached = LibraryStore.load()
@@ -131,6 +166,34 @@ class PlayerViewModel: ObservableObject {
 
         // Notify player of initial volume
         player.volume = Float(volume)
+        
+        setupRemoteCommandCenter()
+
+        // Setup Keyboard Event Observers from KeyableWindow
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("appVolumeUp"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.volume = min(1.0, self.volume + 0.05)
+            }
+        }
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("appVolumeDown"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.volume = max(0.0, self.volume - 0.05)
+            }
+        }
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("appSeekBackward"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.seek(to: max(0.0, self.currentTime - 5.0))
+            }
+        }
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("appSeekForward"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self, let track = self.currentTrack else { return }
+                self.seek(to: min(track.duration, self.currentTime + 5.0))
+            }
+        }
     }
 
     // Persist when needed
@@ -149,7 +212,77 @@ class PlayerViewModel: ObservableObject {
         selectedAlbumId = demo.id
         playingAlbumId = demo.id
         currentTrack = demo.tracks.first
+        spotifyToken = ""
+        soundCloudUrl = ""
+        soundCloudOAuth = ""
+        Keychain.remove(account: "soundcloud_oauth")
+        Keychain.remove(account: "spotify_token")
         persistLibrary()
+    }
+
+    func deleteAlbumLocally(_ albumId: String) {
+        albums.removeAll(where: { $0.id == albumId })
+        if selectedAlbumId == albumId {
+            selectedAlbumId = albums.first?.id
+        }
+        if playingAlbumId == albumId {
+            playingAlbumId = selectedAlbumId
+            if let track = currentTrack, !playlist.contains(track) {
+                currentTrack = playlist.first
+            }
+        }
+        persistLibrary()
+    }
+
+    func deleteTrackLocally(_ trackId: String, from albumId: String) {
+        guard let index = albums.firstIndex(where: { $0.id == albumId }) else { return }
+        albums[index].tracks.removeAll(where: { $0.id == trackId })
+        
+        if currentTrack?.id == trackId && playingAlbumId == albumId {
+            nextTrack()
+        }
+        persistLibrary()
+    }
+
+    private func refreshSoundCloudTrackUrl(_ track: Track) async -> Track {
+        guard track.id.hasPrefix("sc_") else { return track }
+        let numericId = track.id.replacingOccurrences(of: "sc_", with: "")
+        
+        Self.log("Refreshing expired CDN URL for SoundCloud track: \(track.title) (\(numericId))")
+        
+        do {
+            let clientId: String
+            if let cached = Self.scClientId {
+                clientId = cached
+            } else {
+                let html = try await Self.fetchString(url: URL(string: "https://soundcloud.com")!)
+                clientId = try await Self.extractClientId(fromHTML: html)
+                Self.scClientId = clientId
+            }
+            
+            var tc = URLComponents(string: "https://api-v2.soundcloud.com/tracks/\(numericId)")!
+            tc.queryItems = [URLQueryItem(name: "client_id", value: clientId)]
+            
+            let oauth = soundCloudOAuth.trimmingCharacters(in: .whitespacesAndNewlines)
+            let oauthOpt = oauth.isEmpty ? nil : oauth
+            
+            let data = try await Self.fetchData(url: tc.url!, oauth: oauthOpt)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return track }
+            
+            let refreshedTrack = try await Self.makeTrack(from: json, clientId: clientId, oauth: oauthOpt)
+            
+            for (aIdx, album) in albums.enumerated() {
+                if let tIdx = album.tracks.firstIndex(where: { $0.id == track.id }) {
+                    albums[aIdx].tracks[tIdx] = refreshedTrack
+                }
+            }
+            persistLibrary()
+            
+            return refreshedTrack
+        } catch {
+            Self.log("Error refreshing SoundCloud track: \(error.localizedDescription)")
+            return track
+        }
     }
     
     deinit {
@@ -188,8 +321,6 @@ class PlayerViewModel: ObservableObject {
     // MARK: - Playback Controls
     
     func playTrack(_ track: Track, in album: Album? = nil) {
-        guard let url = URL(string: track.audioUrl) else { return }
-
         // Anchor the playback queue to whatever album the user clicked from
         if let album = album {
             playingAlbumId = album.id
@@ -197,25 +328,47 @@ class PlayerViewModel: ObservableObject {
             playingAlbumId = containing.id
         }
 
-        let currentVol = player.volume
         currentTrack = track
+        currentAmbientColors = track.ambientColors
         currentTime = 0.0
+        isPlaying = true // immediately indicate playing state to update visualizers/UI
 
-        let playerItem = AVPlayerItem(url: url)
-        player.replaceCurrentItem(with: playerItem)
-        player.volume = currentVol
-
-        play()
+        Task {
+            let activeTrack: Track
+            if track.id.hasPrefix("sc_") {
+                activeTrack = await refreshSoundCloudTrackUrl(track)
+            } else {
+                activeTrack = track
+            }
+            
+            // Check that the user hasn't skipped to another track while we were resolving
+            guard self.currentTrack?.id == track.id else { return }
+            
+            guard let url = URL(string: activeTrack.audioUrl) else {
+                self.isPlaying = false
+                return
+            }
+            
+            let currentVol = self.player.volume
+            let playerItem = AVPlayerItem(url: url)
+            self.player.replaceCurrentItem(with: playerItem)
+            self.player.volume = currentVol
+            
+            self.player.play()
+            self.updateNowPlayingInfo()
+        }
     }
     
     func play() {
         player.play()
         isPlaying = true
+        updateNowPlayingInfo()
     }
     
     func pause() {
         player.pause()
         isPlaying = false
+        updateNowPlayingInfo()
     }
     
     func togglePlayPause() {
@@ -233,6 +386,7 @@ class PlayerViewModel: ObservableObject {
             if completed {
                 Task { @MainActor in
                     self.currentTime = seconds
+                    self.updateNowPlayingInfo()
                 }
             }
         }
@@ -354,11 +508,14 @@ class PlayerViewModel: ObservableObject {
                                           artworkUrl: fetchedTracks.first?.albumArtUrl,
                                           tracks: fetchedTracks)
                         self.albums.removeAll { $0.kind == .spotify }
+                        self.albums.removeAll { $0.kind == .demo }
                         self.albums.append(album)
                         self.selectedAlbumId = album.id
                         self.playingAlbumId = album.id
                         self.currentTrack = fetchedTracks.first
                         self.persistLibrary()
+                        let trimmed = self.spotifyToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                        Keychain.save(trimmed, account: "spotify_token")
                         self.connectionStatus = "Успешно подключен Spotify! \(fetchedTracks.count) превью-треков."
                     } else {
                         self.connectionStatus = "Плейлисты пустые или нет превью-треков."
@@ -567,8 +724,9 @@ class PlayerViewModel: ObservableObject {
                                 "Треков не найдено (kind=\(kind), path=\(path))"])
             }
 
-            // Replace SoundCloud-related albums (likes/uploads/playlist), keep demo & spotify
+            // Replace SoundCloud-related albums (likes/uploads/playlist), keep spotify
             self.albums.removeAll { [.likes, .uploads, .playlist].contains($0.kind) }
+            self.albums.removeAll { $0.kind == .demo }
             self.albums.append(contentsOf: newAlbums)
             self.selectedAlbumId = newAlbums.first?.id
             self.playingAlbumId = newAlbums.first?.id
@@ -728,6 +886,26 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
+        // Bulletproof fallbacks of well-known public client IDs in case scraping fails
+        let fallbacks = [
+            "iZsnndsk4IpT7w1k1R4t9JqU26gWcoGL",
+            "2t99a7Ywng0uqZJHzerVwui7Vwt8eSpJ",
+            "YUKiah45Qso1j3x49cgN8sUjL8H1zQxP"
+        ]
+        
+        for fallbackId in fallbacks {
+            log("Trying fallback SoundCloud client_id: \(fallbackId.prefix(6))…")
+            var comps = URLComponents(string: "https://api-v2.soundcloud.com/resolve")!
+            comps.queryItems = [
+                URLQueryItem(name: "url", value: "https://soundcloud.com/pages/contact"),
+                URLQueryItem(name: "client_id", value: fallbackId)
+            ]
+            if let testURL = comps.url, (try? await fetchData(url: testURL)) != nil {
+                log("Fallback client_id is working: \(fallbackId)")
+                return fallbackId
+            }
+        }
+
         throw NSError(domain: "SC", code: 20,
                       userInfo: [NSLocalizedDescriptionKey: "client_id не найден на странице"])
     }
@@ -792,11 +970,120 @@ class PlayerViewModel: ObservableObject {
     
     // MARK: - High-Performance Wave Visualizer Simulation
     
+    private func setupRemoteCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.playCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            Task { @MainActor in
+                self.play()
+            }
+            return .success
+        }
+        
+        commandCenter.pauseCommand.isEnabled = true
+        commandCenter.pauseCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            Task { @MainActor in
+                self.pause()
+            }
+            return .success
+        }
+        
+        commandCenter.togglePlayPauseCommand.isEnabled = true
+        commandCenter.togglePlayPauseCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            Task { @MainActor in
+                self.togglePlayPause()
+            }
+            return .success
+        }
+        
+        commandCenter.nextTrackCommand.isEnabled = true
+        commandCenter.nextTrackCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            Task { @MainActor in
+                self.nextTrack()
+            }
+            return .success
+        }
+        
+        commandCenter.previousTrackCommand.isEnabled = true
+        commandCenter.previousTrackCommand.addTarget { [weak self] event in
+            guard let self = self else { return .commandFailed }
+            Task { @MainActor in
+                self.prevTrack()
+            }
+            return .success
+        }
+
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let self = self, let posEvent = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            Task { @MainActor in
+                self.seek(to: posEvent.positionTime)
+            }
+            return .success
+        }
+    }
+    
+    func updateNowPlayingInfo() {
+        guard let track = currentTrack else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: track.title,
+            MPMediaItemPropertyArtist: track.artist,
+            MPMediaItemPropertyPlaybackDuration: track.duration,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
+        ]
+        
+        if let artUrl = track.albumArtUrl, artUrl.hasPrefix("http"), let url = URL(string: artUrl) {
+            Task {
+                if let (data, _) = try? await URLSession.shared.data(from: url),
+                   let nsImage = NSImage(data: data) {
+                    let extractedColors = nsImage.dominantColors()
+                    let artwork = MPMediaItemArtwork(boundsSize: nsImage.size) { _ in nsImage }
+                    await MainActor.run { [weak self] in
+                        guard let self = self else { return }
+                        if let colors = extractedColors, self.currentTrack?.id == track.id {
+                            self.currentAmbientColors = colors
+                        }
+                        var currentInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? info
+                        currentInfo[MPMediaItemPropertyArtwork] = artwork
+                        MPNowPlayingInfoCenter.default().nowPlayingInfo = currentInfo
+                    }
+                }
+            }
+        } else {
+            if let symbolImage = NSImage(systemSymbolName: track.albumArtUrl ?? "music.note", accessibilityDescription: nil) {
+                let artwork = MPMediaItemArtwork(boundsSize: symbolImage.size) { _ in symbolImage }
+                info[MPMediaItemPropertyArtwork] = artwork
+            }
+        }
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
     private func setupVisualizerTimer() {
         // 60 FPS for buttery-smooth spring-driven spectrum
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.updateVisualizerPhysics()
+            guard let self = self else { return }
+            if Thread.isMainThread {
+                MainActor.assumeIsolated {
+                    self.updateVisualizerPhysics()
+                }
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    MainActor.assumeIsolated {
+                        self.updateVisualizerPhysics()
+                    }
+                }
             }
         }
         // Use common modes so it keeps ticking during scrolls / drags
@@ -806,60 +1093,153 @@ class PlayerViewModel: ObservableObject {
     
     private func updateVisualizerPhysics() {
         let count = visualizerBars.count
+        var tempBars = visualizerBars
         
-        if isPlaying {
-            // Halved because we now tick at 60 Hz instead of 30 Hz
-            beatCounter += 0.075
+        if !isPlaying {
+            var allNearZero = true
+            for i in 0..<count {
+                tempBars[i] = tempBars[i] * 0.80 // Smooth exponential decay
+                velocities[i] = 0.0
+                targetBars[i] = 0.0
+                if tempBars[i] > 0.001 {
+                    allNearZero = false
+                } else {
+                    tempBars[i] = 0.0
+                }
+            }
+            visualizerBars = tempBars
+            if allNearZero {
+                return // Avoid redundant calculations when fully decayed
+            }
+        } else {
+            // Seed a deterministic song fingerprint based on track ID or title
+            let trackSeed = Double(abs((currentTrack?.id ?? "default").hashValue % 1000)) / 1000.0
             
-            // Generate a natural-looking frequency spectrum using mathematical harmonics
+            // Derive a unique tempo (BPM) and rhythm offset for this specific song
+            let bpm = 115.0 + trackSeed * 45.0 // Unique BPM between 115 and 160
+            let secondsPerBeat = 60.0 / bpm
+            let currentBeat = currentTime / secondsPerBeat
+            
+            // Dynamic phase based entirely on exact currentTime to prevent any visual drifts/stutters!
+            let timeFactor = currentTime
+            
             for i in 0..<count {
                 let indexFactor = Double(i) / Double(count)
                 
-                // Base rhythm/beat wave (bass on the left, treble on the right)
-                let bassFrequency = sin(beatCounter * 1.5) * 0.35 + 0.45
-                let midFrequency = cos(beatCounter * 0.8 + Double(i) * 0.2) * 0.25 + 0.3
-                let highFrequency = sin(beatCounter * 2.2 - Double(i) * 0.4) * 0.15 + 0.15
+                // Deterministic harmonics seeded by track properties
+                // Bass section pulses hard on the beats of this specific song (with power of 4 for sharpness)
+                let beatPulse = pow(max(0.0, sin(currentBeat * .pi - (trackSeed * .pi))), 4.0)
+                
+                let bassFrequency = beatPulse * 0.65 + sin(timeFactor * 3.5 + trackSeed * 10.0) * 0.15 + 0.20
+                let midFrequency = cos(timeFactor * 2.2 + Double(i) * 0.25 + trackSeed * 5.0) * 0.22 + 0.35
+                let highFrequency = sin(timeFactor * 4.5 - Double(i) * 0.5 + trackSeed * 8.0) * 0.18 + 0.18
                 
                 var amplitude = 0.0
                 
                 if i < count / 4 {
-                    // Bass section (low index)
-                    amplitude = bassFrequency * (1.0 - indexFactor) * 0.95
+                    // Bass section (low frequencies)
+                    amplitude = bassFrequency * (1.0 - indexFactor) * 1.15
                 } else if i < count * 3 / 4 {
-                    // Mid section
-                    amplitude = midFrequency * 0.8
+                    // Mid frequencies
+                    amplitude = midFrequency * 0.95
                 } else {
-                    // Treble section (high index)
-                    amplitude = highFrequency * indexFactor * 1.2
+                    // Treble frequencies
+                    amplitude = highFrequency * indexFactor * 1.35
                 }
                 
-                // Add some natural-looking micro-noise jitter
-                let noise = Double.random(in: -0.05...0.05)
-                amplitude = max(0.02, min(1.0, amplitude + noise))
+                // High-frequency transients (simulated snare / hi-hat hits)
+                // Add micro-noise transients that trigger deterministically in the song timeline
+                let transientTrigger = sin(timeFactor * 14.0 + trackSeed * 3.0)
+                if transientTrigger > 0.85 && i > count * 2 / 3 {
+                    amplitude += 0.22 * (transientTrigger - 0.85)
+                }
                 
-                // Apply volume factor
-                targetBars[i] = amplitude * volume
+                // Add tiny organic dynamic noise to keep it lively
+                let noise = Double.random(in: -0.04...0.04)
+                amplitude = max(0.0, min(1.0, amplitude + noise))
+                
+                // Scale target amplitude by current volume level to link visualizer with loudness!
+                targetBars[i] = min(1.0, amplitude * 1.45 * volume)
             }
-        } else {
-            // Decay to zero when paused
-            for i in 0..<count {
-                targetBars[i] = 0.01
-            }
-        }
-        
-        // Smooth physics-based spring interpolation
-        // bars = bars + velocity * dt
-        // velocity = velocity + (target - bars) * springStiffness - velocity * damping
-        // Tuned for 60 Hz (smaller step → smoother spring)
-        let stiffness = 0.20
-        let damping = 0.78
-        
-        for i in 0..<count {
-            let displacement = targetBars[i] - visualizerBars[i]
-            let force = displacement * stiffness
             
-            velocities[i] = velocities[i] * damping + force
-            visualizerBars[i] = max(0.01, visualizerBars[i] + velocities[i])
+            // Smooth physics-based spring interpolation
+            let stiffness = 0.22
+            let damping = 0.76
+            
+            for i in 0..<count {
+                let displacement = targetBars[i] - tempBars[i]
+                let force = displacement * stiffness
+                
+                velocities[i] = velocities[i] * damping + force
+                tempBars[i] = max(0.0, tempBars[i] + velocities[i])
+            }
+            visualizerBars = tempBars
         }
+    }
+}
+
+// MARK: - Premium Color Extraction from Album Art
+extension NSImage {
+    func dominantColors() -> [Color]? {
+        let targetSize = NSSize(width: 8, height: 8)
+        guard let tiff = self.tiffRepresentation,
+              let _ = NSBitmapImageRep(data: tiff) else { return nil }
+              
+        guard let smallRep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 8,
+            pixelsHigh: 8,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .calibratedRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return nil }
+        
+        NSGraphicsContext.saveGraphicsState()
+        let context = NSGraphicsContext(bitmapImageRep: smallRep)
+        NSGraphicsContext.current = context
+        
+        self.draw(in: NSRect(origin: .zero, size: targetSize),
+                  from: NSRect(origin: .zero, size: self.size),
+                  operation: .copy,
+                  fraction: 1.0)
+                  
+        NSGraphicsContext.restoreGraphicsState()
+        
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, count1 = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, count2 = 0
+        
+        for y in 0..<8 {
+            for x in 0..<8 {
+                guard let color = smallRep.colorAt(x: x, y: y) else { continue }
+                let r = color.redComponent
+                let g = color.greenComponent
+                let b = color.blueComponent
+                
+                // Sample different spatial regions (top-left vs bottom-right)
+                if x + y < 7 {
+                    r1 += r
+                    g1 += g
+                    b1 += b
+                    count1 += 1
+                } else {
+                    r2 += r
+                    g2 += g
+                    b2 += b
+                    count2 += 1
+                }
+            }
+        }
+        
+        if count1 > 0 && count2 > 0 {
+            let finalColor1 = Color(red: r1 / CGFloat(count1), green: g1 / CGFloat(count1), blue: b1 / CGFloat(count1))
+            let finalColor2 = Color(red: r2 / CGFloat(count2), green: g2 / CGFloat(count2), blue: b2 / CGFloat(count2))
+            return [finalColor1, finalColor2]
+        }
+        
+        return nil
     }
 }

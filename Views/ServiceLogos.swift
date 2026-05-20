@@ -1,5 +1,29 @@
 import SwiftUI
 
+struct ServiceLogosHelper {
+    static func findLocalPath(for filename: String) -> String? {
+        let fm = FileManager.default
+        let paths = [
+            fm.currentDirectoryPath + "/" + filename,
+            fm.currentDirectoryPath + "/aesthetic-player/" + filename,
+            "/Users/korova/Desktop/massegnger/aesthetic-player/" + filename,
+            "/Users/korova/Desktop/massegnger/" + filename
+        ]
+        for path in paths {
+            if fm.fileExists(atPath: path) {
+                return path
+            }
+        }
+        return nil
+    }
+
+    static func findSoundCloudLogoPath() -> String? {
+        if let path = findLocalPath(for: "49336.png") { return path }
+        if let path = findLocalPath(for: "images.png") { return path }
+        return nil
+    }
+}
+
 // MARK: - Brand colors
 extension Color {
     static let spotifyGreen = Color(red: 0.117, green: 0.843, blue: 0.376)
@@ -15,12 +39,23 @@ struct SpotifyLogo: View {
     )
 
     var body: some View {
-        AsyncImage(url: Self.url) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().interpolation(.high).scaledToFit()
-            default:
-                LegacySpotifyLogo(size: size)
+        Group {
+            if let path = ServiceLogosHelper.findLocalPath(for: "Spotify_icon.svg.png"),
+               let nsImage = NSImage(contentsOfFile: path) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .clipShape(Circle())
+            } else {
+                AsyncImage(url: Self.url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().interpolation(.high).scaledToFit().clipShape(Circle())
+                    default:
+                        LegacySpotifyLogo(size: size)
+                    }
+                }
             }
         }
         .frame(width: size, height: size)
@@ -78,12 +113,24 @@ struct SoundCloudLogo: View {
     )
 
     var body: some View {
-        AsyncImage(url: Self.url) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().interpolation(.high).scaledToFit()
-            default:
-                LegacySoundCloudLogo(size: size)
+        Group {
+            if let path = ServiceLogosHelper.findSoundCloudLogoPath(),
+               let nsImage = NSImage(contentsOfFile: path) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            } else {
+                AsyncImage(url: Self.url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().interpolation(.high).scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+                    default:
+                        LegacySoundCloudLogo(size: size)
+                    }
+                }
             }
         }
         .frame(width: size, height: size)
@@ -145,5 +192,41 @@ private struct CloudBars: Shape {
             )
         }
         return p
+    }
+}
+
+// MARK: - Premium Minimalist Brand Logo
+struct AestheticLogoView: View {
+    var size: CGFloat = 28
+    var color: Color = .white
+    
+    var body: some View {
+        Canvas { ctx, size in
+            let w = size.width
+            let h = size.height
+            
+            // Stylized concentric outer ring
+            let outerPath = Path(ellipseIn: CGRect(x: 1.5, y: 1.5, width: w - 3, height: h - 3))
+            ctx.stroke(outerPath, with: .color(color.opacity(0.18)), style: StrokeStyle(lineWidth: 1.5))
+            
+            // Symmetrical, cyber-minimalist soundwave bars
+            let count = 5
+            let spacing: CGFloat = 3.0
+            let barW: CGFloat = 2.0
+            let startX: CGFloat = (w - (CGFloat(count) * barW + CGFloat(count - 1) * spacing)) / 2.0
+            
+            let heights: [CGFloat] = [0.42, 0.70, 0.90, 0.70, 0.42]
+            let opacities: [Double] = [0.45, 0.75, 1.0, 0.75, 0.45]
+            
+            for i in 0..<count {
+                let barH = h * heights[i]
+                let x = startX + CGFloat(i) * (barW + spacing)
+                let y = (h - barH) / 2.0
+                
+                let path = Path(roundedRect: CGRect(x: x, y: y, width: barW, height: barH), cornerRadius: 1.0)
+                ctx.fill(path, with: .color(color.opacity(opacities[i])))
+            }
+        }
+        .frame(width: size, height: size)
     }
 }

@@ -10,6 +10,7 @@ struct VisualizerView: View {
     let isPlaying: Bool
     @State var mode: VisualizerMode = .bars
     @EnvironmentObject var themeManager: ThemeManager
+    @Namespace private var visualizerNamespace
 
     private var palette: Palette { themeManager.theme.palette }
 
@@ -21,7 +22,7 @@ struct VisualizerView: View {
                 if mode == .bars {
                     BarsCanvas(bars: bars, isDark: themeManager.theme == .dark, palette: palette)
                 } else {
-                    WaveCanvas(bars: bars, palette: palette)
+                    WaveCanvas(bars: bars, isPlaying: isPlaying, palette: palette)
                 }
             }
             .frame(minHeight: 130)
@@ -51,8 +52,55 @@ struct VisualizerView: View {
             }
             Spacer()
             HStack(spacing: 0) {
-                segmentButton(title: "BARS", selected: mode == .bars) { mode = .bars }
-                segmentButton(title: "WAVE", selected: mode == .wave) { mode = .wave }
+                Button(action: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                        mode = .bars
+                    }
+                }) {
+                    Text("BARS")
+                        .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                        .tracking(1.4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .foregroundColor(mode == .bars
+                                         ? (themeManager.theme == .dark ? .black : .white)
+                                         : palette.textSecondary)
+                        .background(
+                            ZStack {
+                                if mode == .bars {
+                                    Capsule()
+                                        .fill(palette.textPrimary)
+                                        .matchedGeometryEffect(id: "activeSegment", in: visualizerNamespace)
+                                }
+                            }
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+                        mode = .wave
+                    }
+                }) {
+                    Text("WAVE")
+                        .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                        .tracking(1.4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .foregroundColor(mode == .wave
+                                         ? (themeManager.theme == .dark ? .black : .white)
+                                         : palette.textSecondary)
+                        .background(
+                            ZStack {
+                                if mode == .wave {
+                                    Capsule()
+                                        .fill(palette.textPrimary)
+                                        .matchedGeometryEffect(id: "activeSegment", in: visualizerNamespace)
+                                }
+                            }
+                        )
+                }
+                .buttonStyle(.plain)
             }
             .padding(3)
             .background(Capsule().fill(palette.inset))
@@ -60,23 +108,6 @@ struct VisualizerView: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
-    }
-
-    private func segmentButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                .tracking(1.4)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .foregroundColor(selected
-                                 ? (themeManager.theme == .dark ? .black : .white)
-                                 : palette.textSecondary)
-                .background(
-                    Capsule().fill(selected ? palette.textPrimary : Color.clear)
-                )
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -111,7 +142,7 @@ struct BarsCanvas: View {
 
                 for c in 0..<cellCount {
                     let cellIndex = (cellCount - 1) - c   // 0 = bottom
-                    let isActive = cellIndex <= activeCells
+                    let isActive = cellIndex < activeCells
                     let y = vPad + CGFloat(c) * (cellHeight + cellGap)
                     let rect = CGRect(x: x, y: y, width: barWidth, height: cellHeight)
                     let path = Path(roundedRect: rect, cornerRadius: 1.5)
@@ -137,20 +168,35 @@ struct BarsCanvas: View {
 // MARK: - Wave Canvas
 struct WaveCanvas: View {
     let bars: [Double]
+    let isPlaying: Bool
     let palette: Palette
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
-            Canvas(rendersAsynchronously: true) { ctx, size in
-                drawWave(ctx: ctx, size: size, phaseOffset: 0,
-                         baseColor: palette.accent, lineWidth: 3, opacity: 0.95, time: phase)
-                drawWave(ctx: ctx, size: size, phaseOffset: .pi * 0.5,
-                         baseColor: palette.accentSecondary, lineWidth: 2.5, opacity: 0.7, time: phase)
-                drawWave(ctx: ctx, size: size, phaseOffset: .pi * 1.1,
-                         baseColor: palette.textPrimary, lineWidth: 1.2, opacity: 0.85, time: phase)
+        Group {
+            if isPlaying {
+                TimelineView(.animation) { timeline in
+                    let phase = timeline.date.timeIntervalSinceReferenceDate
+                    Canvas(rendersAsynchronously: true) { ctx, size in
+                        drawWave(ctx: ctx, size: size, phaseOffset: 0,
+                                 baseColor: palette.accent, lineWidth: 3, opacity: 0.95, time: phase)
+                        drawWave(ctx: ctx, size: size, phaseOffset: .pi * 0.5,
+                                 baseColor: palette.accentSecondary, lineWidth: 2.5, opacity: 0.7, time: phase)
+                        drawWave(ctx: ctx, size: size, phaseOffset: .pi * 1.1,
+                                 baseColor: palette.textPrimary, lineWidth: 1.2, opacity: 0.85, time: phase)
+                    }
+                    .drawingGroup()
+                }
+            } else {
+                Canvas(rendersAsynchronously: true) { ctx, size in
+                    drawWave(ctx: ctx, size: size, phaseOffset: 0,
+                             baseColor: palette.accent, lineWidth: 3, opacity: 0.95, time: 0.0)
+                    drawWave(ctx: ctx, size: size, phaseOffset: .pi * 0.5,
+                             baseColor: palette.accentSecondary, lineWidth: 2.5, opacity: 0.7, time: 0.0)
+                    drawWave(ctx: ctx, size: size, phaseOffset: .pi * 1.1,
+                             baseColor: palette.textPrimary, lineWidth: 1.2, opacity: 0.85, time: 0.0)
+                }
+                .drawingGroup()
             }
-            .drawingGroup()
         }
     }
 
@@ -189,6 +235,17 @@ struct WaveCanvas: View {
                 )
             }
         }
+        
+        // Premium Triple-Pass Neon Glowing Laser Ribbon Effect
+        // 1. Wide ambient glow background layer
+        ctx.stroke(path, with: .color(baseColor.opacity(opacity * 0.16)),
+                   style: StrokeStyle(lineWidth: lineWidth * 3.6, lineCap: .round, lineJoin: .round))
+        
+        // 2. Focused vibrant core glow layer
+        ctx.stroke(path, with: .color(baseColor.opacity(opacity * 0.42)),
+                   style: StrokeStyle(lineWidth: lineWidth * 1.8, lineCap: .round, lineJoin: .round))
+        
+        // 3. High-intensity sharp white core core layer
         ctx.stroke(path, with: .color(baseColor.opacity(opacity)),
                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
     }

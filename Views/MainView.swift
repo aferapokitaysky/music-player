@@ -1,10 +1,15 @@
 import SwiftUI
 
 struct MainView: View {
-    @StateObject private var viewModel = PlayerViewModel()
+    @ObservedObject var viewModel: PlayerViewModel
     @EnvironmentObject var themeManager: ThemeManager
     @State private var showSettings = false
     @State private var artGlowPhase: Double = 0
+    @State private var isHoveringControls = false
+    @State private var isWindowKey = true
+    @State private var ambientBreath: Double = 0.9
+    @State private var parallaxOffset: CGSize = .zero
+    @State private var isHoveringArt = false
 
     private var palette: Palette { themeManager.theme.palette }
 
@@ -12,12 +17,18 @@ struct MainView: View {
         ZStack {
             palette.appTint.ignoresSafeArea()
             ambientBackdrop.allowsHitTesting(false)
+            
+            // Cosmic Bass Dust background layer
+            let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
+            CosmicDustView(isPlaying: viewModel.isPlaying, intensity: intensity, palette: palette)
+                .allowsHitTesting(false)
+                .ignoresSafeArea()
 
             HStack(spacing: 0) {
                 if !viewModel.sidebarCollapsed {
                     albumsColumn
                         .frame(width: 200)
-                        .background(palette.sidebar)
+                        .background(palette.sidebar.opacity(viewModel.uiOpacity))
                         .transition(.move(edge: .leading).combined(with: .opacity))
 
                     Rectangle().fill(palette.divider).frame(width: 1)
@@ -25,7 +36,7 @@ struct MainView: View {
 
                 tracksColumn
                     .frame(width: 280)
-                    .background(palette.sidebar.opacity(0.6))
+                    .background(palette.sidebar.opacity(viewModel.uiOpacity * 0.9))
 
                 Rectangle().fill(palette.divider).frame(width: 1)
 
@@ -42,17 +53,41 @@ struct MainView: View {
             withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
                 artGlowPhase = 1
             }
+            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true)) {
+                ambientBreath = 1.15
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            if let window = notification.object as? NSWindow, window == WindowController.shared.window {
+                isWindowKey = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { notification in
+            if let window = notification.object as? NSWindow, window == WindowController.shared.window {
+                isWindowKey = false
+            }
         }
     }
 
     // MARK: - Backdrop
     private var ambientBackdrop: some View {
-        ZStack {
-            Circle().fill(palette.accent.opacity(themeManager.theme == .dark ? 0.10 : 0.10))
-                .frame(width: 360, height: 360).blur(radius: 90).offset(x: -260, y: -180)
-            Circle().fill(palette.accentSecondary.opacity(themeManager.theme == .dark ? 0.10 : 0.08))
-                .frame(width: 380, height: 380).blur(radius: 100).offset(x: 320, y: 220)
+        let colors = viewModel.currentAmbientColors.isEmpty
+            ? (viewModel.currentTrack?.ambientColors ?? [palette.accent, palette.accentSecondary])
+            : viewModel.currentAmbientColors
+        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
+        let dynamicBreath = ambientBreath * (1.0 + (viewModel.isPlaying ? intensity * 0.12 : 0.0))
+
+        return ZStack {
+            Circle().fill(colors[0].opacity((themeManager.theme == .dark ? 0.12 : 0.10) * (dynamicBreath * 0.8 + 0.2)))
+                .frame(width: 360 * dynamicBreath, height: 360 * dynamicBreath)
+                .blur(radius: 90)
+                .offset(x: -260, y: -180)
+            Circle().fill(colors[1].opacity((themeManager.theme == .dark ? 0.10 : 0.08) * (dynamicBreath * 0.8 + 0.2)))
+                .frame(width: 380 * dynamicBreath, height: 380 * dynamicBreath)
+                .blur(radius: 100)
+                .offset(x: 320, y: 220)
         }
+        .animation(.easeInOut(duration: 1.5), value: colors)
     }
 
     // MARK: - Column 1 — Albums
@@ -60,26 +95,12 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 14) {
             ZStack(alignment: .topLeading) {
                 WindowDragArea().frame(height: 44)
-                HStack(spacing: 8) {
-                    trafficLight(color: palette.closeColor)    { WindowController.shared.close() }
-                    trafficLight(color: palette.minimizeColor) { WindowController.shared.minimize() }
-                    trafficLight(color: palette.maximizeColor) { WindowController.shared.zoom() }
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 14)
+                Spacer().frame(width: 80, height: 44)
             }
 
             // Brand
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(palette.textPrimary)
-                        .frame(width: 28, height: 28)
-                    Image(systemName: "waveform")
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundColor(themeManager.theme == .dark ? .black : .white)
-                }
+                AestheticLogoView(size: 28, color: palette.textPrimary)
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Aesthetic")
                         .font(.system(size: 14, weight: .heavy, design: .rounded))
@@ -95,7 +116,8 @@ struct MainView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 4) {
                     ForEach(viewModel.albums) { album in
-                        albumRow(album)
+                        AlbumRowView(album: album, viewModel: viewModel)
+                            .environmentObject(themeManager)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -116,7 +138,11 @@ struct MainView: View {
                 .buttonStyle(.plain)
                 .help("Сменить тему")
 
-                Button(action: { withAnimation(.spring()) { showSettings.toggle() } }) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) {
+                        showSettings.toggle()
+                    }
+                }) {
                     Image(systemName: "slider.horizontal.3")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(palette.textSecondary)
@@ -129,11 +155,16 @@ struct MainView: View {
 
                 Spacer()
 
-                Button(action: { withAnimation { viewModel.sidebarCollapsed = true } }) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
+                        viewModel.sidebarCollapsed = true
+                    }
+                }) {
                     Image(systemName: "sidebar.left")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(palette.textTertiary)
                         .frame(width: 28, height: 28)
+                        .rotationEffect(.degrees(viewModel.sidebarCollapsed ? 180 : 0))
                 }
                 .buttonStyle(.plain)
                 .help("Скрыть альбомы")
@@ -143,75 +174,7 @@ struct MainView: View {
         }
     }
 
-    private func albumRow(_ album: Album) -> some View {
-        let isSelected = album.id == viewModel.selectedAlbumId
-        let icon: String = {
-            switch album.kind {
-            case .likes: return "heart.fill"
-            case .playlist: return "music.note.list"
-            case .uploads: return "square.and.arrow.up.fill"
-            case .demo: return "sparkles"
-            case .spotify: return "music.note.house.fill"
-            case .custom: return "music.note"
-            }
-        }()
-        let iconColor: Color = {
-            switch album.kind {
-            case .likes: return Color(red: 1.0, green: 0.36, blue: 0.42)
-            case .spotify: return Color.spotifyGreen
-            default: return palette.textSecondary
-            }
-        }()
 
-        return HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(palette.inset)
-                    .frame(width: 32, height: 32)
-                if let url = album.artworkUrl, url.hasPrefix("http"), let u = URL(string: url) {
-                    AsyncImage(url: u) { phase in
-                        switch phase {
-                        case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
-                        default: Image(systemName: icon).foregroundColor(iconColor).font(.system(size: 13, weight: .bold))
-                        }
-                    }
-                    .frame(width: 32, height: 32)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                } else {
-                    Image(systemName: icon).foregroundColor(iconColor).font(.system(size: 13, weight: .bold))
-                }
-            }
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(palette.stroke, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(album.name)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .foregroundColor(isSelected ? palette.textPrimary : palette.textPrimary.opacity(0.85))
-                Text("\(album.tracks.count) треков")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundColor(palette.textTertiary)
-            }
-            Spacer(minLength: 0)
-            if viewModel.playingAlbumId == album.id {
-                Circle()
-                    .fill(palette.accent)
-                    .frame(width: 5, height: 5)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? palette.accentSoft : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(isSelected ? palette.accent.opacity(0.30) : Color.clear, lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture { viewModel.selectedAlbumId = album.id }
-    }
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
@@ -221,36 +184,34 @@ struct MainView: View {
             .padding(.horizontal, 14)
     }
 
-    private func trafficLight(color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ZStack {
-                Circle().fill(color).frame(width: 12, height: 12)
-                Circle().stroke(Color.black.opacity(0.18), lineWidth: 0.5).frame(width: 12, height: 12)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: - Column 2 — Tracks of selected album
     private var tracksColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack(alignment: .topLeading) {
                 WindowDragArea().frame(height: 44)
-                HStack {
+                HStack(spacing: 12) {
                     if viewModel.sidebarCollapsed {
-                        Button(action: { withAnimation { viewModel.sidebarCollapsed = false } }) {
+                        Spacer().frame(width: 80)
+                        
+                        Button(action: {
+                            withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
+                                viewModel.sidebarCollapsed = false
+                            }
+                        }) {
                             Image(systemName: "sidebar.left")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(palette.textSecondary)
                                 .frame(width: 28, height: 28)
                                 .background(Circle().fill(palette.inset))
                                 .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
+                                .rotationEffect(.degrees(viewModel.sidebarCollapsed ? 180 : 0))
                         }
                         .buttonStyle(.plain)
+                        .help("Показать альбомы")
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 14)
                 .padding(.top, 14)
             }
 
@@ -268,7 +229,8 @@ struct MainView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 4) {
                         ForEach(album.tracks) { track in
-                            trackRow(track, in: album)
+                            TrackRowView(track: track, album: album, viewModel: viewModel)
+                                .environmentObject(themeManager)
                         }
                     }
                     .padding(.horizontal, 8)
@@ -285,87 +247,7 @@ struct MainView: View {
         }
     }
 
-    private func trackRow(_ track: Track, in album: Album) -> some View {
-        let isActive = viewModel.currentTrack == track
-        return HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(palette.inset)
-                    .frame(width: 36, height: 36)
 
-                if let url = track.albumArtUrl, url.hasPrefix("http"), let u = URL(string: url) {
-                    AsyncImage(url: u) { phase in
-                        switch phase {
-                        case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
-                        default: Image(systemName: "music.note").foregroundColor(palette.textTertiary)
-                        }
-                    }
-                    .frame(width: 36, height: 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                } else {
-                    Image(systemName: track.albumArtUrl ?? "music.note")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(palette.textTertiary)
-                }
-
-                if isActive {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.black.opacity(0.55))
-                        .frame(width: 36, height: 36)
-                    if viewModel.isPlaying { activeBars }
-                    else { Image(systemName: "play.fill").font(.system(size: 12, weight: .heavy)).foregroundColor(.white) }
-                }
-            }
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(palette.stroke, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(track.title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(isActive ? palette.accent : palette.textPrimary)
-                    .lineLimit(1)
-                Text(track.artist)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(palette.textTertiary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            Text(formatDuration(track.duration))
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(palette.textTertiary)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isActive ? palette.accentSoft : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(isActive ? palette.accent.opacity(0.30) : Color.clear, lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture { viewModel.playTrack(track, in: album) }
-    }
-
-    private var activeBars: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 2) {
-                ForEach(0..<3) { i in
-                    let phase = sin(t * 6.0 + Double(i) * 1.3)
-                    let h = CGFloat(6.0 + (phase + 1.0) * 4.0)
-                    RoundedRectangle(cornerRadius: 1).fill(Color.white)
-                        .frame(width: 2, height: h)
-                }
-            }
-        }
-    }
-
-    private func formatDuration(_ seconds: Double) -> String {
-        let m = Int(seconds) / 60
-        let s = Int(seconds) % 60
-        return String(format: "%d:%02d", m, s)
-    }
 
     // MARK: - Column 3 — Now playing + visualizer + controls
     private var playerColumn: some View {
@@ -393,10 +275,20 @@ struct MainView: View {
                         Text(track.title)
                             .font(.system(size: 22, weight: .heavy, design: .rounded))
                             .lineLimit(2)
+                            .id(track.id + "_title")
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
                         Text(track.artist)
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundColor(palette.textSecondary)
                             .lineLimit(1)
+                            .id(track.id + "_artist")
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
                     } else {
                         Text("Нет трека")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
@@ -404,6 +296,7 @@ struct MainView: View {
                     }
                     Spacer()
                 }
+                .animation(.spring(response: 0.42, dampingFraction: 0.76), value: viewModel.currentTrack)
                 Spacer()
             }
             .padding(.horizontal, 22)
@@ -420,45 +313,101 @@ struct MainView: View {
     }
 
     private var albumArt: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+        let intensity = viewModel.visualizerBars.reduce(0.0, +) / max(1.0, Double(viewModel.visualizerBars.count))
+        let dynamicScale = 1.0 + (viewModel.isPlaying ? intensity * 0.08 : 0.0)
+        let dynamicBlur = 22 + (viewModel.isPlaying ? CGFloat(intensity * 18.0) : 0.0)
+        let dynamicOpacity = viewModel.isPlaying ? (0.40 + 0.25 * artGlowPhase + intensity * 0.35) : 0.12
+        let artSize: CGFloat = 160
+
+        return ZStack {
+            // Ambient glowing back shadow matching the album art colors
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(LinearGradient(colors: palette.accentGradient,
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 138, height: 138)
-                .blur(radius: 22)
-                .opacity(viewModel.isPlaying ? (0.40 + 0.18 * artGlowPhase) : 0.12)
+                .frame(width: artSize, height: artSize)
+                .blur(radius: dynamicBlur)
+                .opacity(dynamicOpacity)
+                .scaleEffect(dynamicScale)
 
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.cardElevated)
-                .frame(width: 124, height: 124)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(palette.strokeStrong, lineWidth: 1)
-                )
-                .shadow(color: palette.cardShadow, radius: 18, x: 0, y: 10)
+            // High-fidelity square album art card (no vinyl, matches the new premium spec)
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(palette.inset)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(palette.strokeStrong, lineWidth: 1)
+                    )
 
-            if let track = viewModel.currentTrack {
-                Group {
-                    if let url = track.albumArtUrl, url.hasPrefix("http") {
-                        AsyncImage(url: URL(string: url)) { image in
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: { ProgressView() }
-                    } else {
-                        ZStack {
-                            LinearGradient(colors: [palette.accent.opacity(0.30),
-                                                    palette.accentSecondary.opacity(0.30)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                            Image(systemName: track.albumArtUrl ?? "music.note")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(palette.textPrimary)
+                if let track = viewModel.currentTrack {
+                    Group {
+                        if let url = track.albumArtUrl, url.hasPrefix("http") {
+                            AsyncImage(url: URL(string: url)) { image in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                ProgressView().scaleEffect(0.6)
+                            }
+                        } else {
+                            ZStack {
+                                LinearGradient(
+                                    colors: [palette.accent.opacity(0.35), palette.accentSecondary.opacity(0.35)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                Image(systemName: track.albumArtUrl ?? "music.note")
+                                    .font(.system(size: 38, weight: .bold))
+                                    .foregroundColor(palette.textPrimary)
+                            }
                         }
                     }
+                    .frame(width: artSize - 8, height: artSize - 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    
+                    // Specular gloss reflection overlay matching main UI
+                    LinearGradient(
+                        colors: [.white.opacity(0.24), .clear, .white.opacity(0.12)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: artSize - 8, height: artSize - 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .blendMode(.overlay)
+                    .allowsHitTesting(false)
                 }
-                .frame(width: 112, height: 112)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .frame(width: artSize, height: artSize)
+            .scaleEffect(dynamicScale)
+        }
+        .frame(width: artSize, height: artSize)
+        .scaleEffect(isHoveringArt ? 1.06 : 1.0)
+        .offset(y: viewModel.isPlaying ? CGFloat(sin(artGlowPhase * .pi * 2.0) * 5.0) : 0.0)
+        .rotationEffect(.degrees(viewModel.isPlaying ? cos(artGlowPhase * .pi * 2.0) * 2.0 : 0.0))
+        .rotation3DEffect(.degrees(Double(parallaxOffset.width / 5.0)), axis: (x: 0, y: 1, z: 0))
+        .rotation3DEffect(.degrees(Double(-parallaxOffset.height / 5.0)), axis: (x: 1, y: 0, z: 0))
+        .shadow(color: palette.accent.opacity(isHoveringArt ? 0.25 : 0.0), radius: 15, x: 0, y: 8)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged { val in
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+                        parallaxOffset = CGSize(width: val.location.x - artSize/2, height: val.location.y - artSize/2)
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                        parallaxOffset = .zero
+                    }
+                }
+        )
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.68)) {
+                isHoveringArt = hovering
             }
         }
-        .frame(width: 138, height: 138)
+        .onTapGesture(count: 2) {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.45)) {
+                viewModel.togglePlayPause()
+            }
+        }
     }
 
     // MARK: - Settings overlay
@@ -466,7 +415,12 @@ struct MainView: View {
         ZStack {
             Color.black.opacity(themeManager.theme == .dark ? 0.55 : 0.30)
                 .edgesIgnoringSafeArea(.all)
-                .onTapGesture { withAnimation(.spring()) { showSettings = false } }
+                .transition(.opacity)
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) {
+                        showSettings = false
+                    }
+                }
 
             VStack(spacing: 18) {
                 HStack {
@@ -479,7 +433,11 @@ struct MainView: View {
                             .tracking(1.5)
                     }
                     Spacer()
-                    Button(action: { withAnimation(.spring()) { showSettings = false } }) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) {
+                            showSettings = false
+                        }
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title3)
                             .foregroundColor(palette.textTertiary)
@@ -569,6 +527,30 @@ struct MainView: View {
                     }
                 }
 
+                Rectangle().fill(palette.divider).frame(height: 1)
+
+                // UI panel opacity slider
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.dashed")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(palette.accent)
+                        Text("ПРОЗРАЧНОСТЬ UI ПАНЕЛЕЙ")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundColor(palette.textSecondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        Slider(value: $viewModel.uiOpacity, in: 0.15...0.95)
+                            .accentColor(palette.accent)
+
+                        Text("\(Int(viewModel.uiOpacity * 100))%")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(palette.textSecondary)
+                            .frame(width: 36, alignment: .trailing)
+                    }
+                }
+
                 if !viewModel.connectionStatus.isEmpty {
                     Text(viewModel.connectionStatus)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -587,7 +569,18 @@ struct MainView: View {
                     .stroke(palette.strokeStrong, lineWidth: 1)
             )
             .shadow(color: palette.cardShadow, radius: 25)
-            .transition(.scale(scale: 0.92).combined(with: .opacity))
+            .transition(
+                .asymmetric(
+                    insertion: .modifier(
+                        active: RotationPerspectiveModifier(angle: -35, scale: 0.9, opacity: 0),
+                        identity: RotationPerspectiveModifier(angle: 0, scale: 1, opacity: 1)
+                    ),
+                    removal: .modifier(
+                        active: RotationPerspectiveModifier(angle: 35, scale: 0.9, opacity: 0),
+                        identity: RotationPerspectiveModifier(angle: 0, scale: 1, opacity: 1)
+                    )
+                )
+            )
         }
     }
 
@@ -645,6 +638,103 @@ struct MainView: View {
                 .shadow(color: accent.opacity(0.4), radius: 8, x: 0, y: 4)
             }
             .buttonStyle(.plain)
+        }
+    }
+}
+
+// MARK: - Transitions
+struct RotationPerspectiveModifier: ViewModifier {
+    let angle: Double
+    let scale: CGFloat
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content
+            .rotation3DEffect(.degrees(angle), axis: (x: 1, y: -0.2, z: 0), anchor: .center, perspective: 0.6)
+            .scaleEffect(scale)
+            .opacity(opacity)
+    }
+}
+
+
+
+// MARK: - Cosmic Bass Dust Particles
+struct DustParticle: Identifiable {
+    let id = UUID()
+    var x: Double
+    var y: Double
+    var vx: Double
+    var vy: Double
+    var size: Double
+    var opacity: Double
+    var color: Color
+}
+
+struct CosmicDustView: View {
+    let isPlaying: Bool
+    let intensity: Double
+    let palette: Palette
+    
+    @State private var particles: [DustParticle] = []
+    @State private var hasGenerated = false
+    
+    var body: some View {
+        GeometryReader { geo in
+            TimelineView(.animation) { timeline in
+                Canvas(rendersAsynchronously: true) { ctx, size in
+                    for p in particles {
+                        let rect = CGRect(x: p.x, y: p.y, width: p.size, height: p.size)
+                        let path = Path(ellipseIn: rect)
+                        ctx.fill(path, with: .color(p.color.opacity(p.opacity * (isPlaying ? 0.95 : 0.40))))
+                    }
+                }
+                .onAppear {
+                    if !hasGenerated {
+                        generateParticles(in: geo.size)
+                        hasGenerated = true
+                    }
+                }
+                .onChange(of: timeline.date) { _ in
+                    updateParticles(in: geo.size)
+                }
+            }
+        }
+    }
+    
+    private func generateParticles(in size: CGSize) {
+        var list: [DustParticle] = []
+        let colors = [palette.accent, palette.accentSecondary, palette.textPrimary]
+        for _ in 0..<75 {
+            let x = Double.random(in: 0...Double(size.width))
+            let y = Double.random(in: 0...Double(size.height))
+            let angle = Double.random(in: 0...(2.0 * .pi))
+            let speed = Double.random(in: 0.15...0.45) // Elegant constant slow drift speed
+            list.append(DustParticle(
+                x: x,
+                y: y,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed,
+                size: Double.random(in: 1.0...2.6),
+                opacity: Double.random(in: 0.10...0.50),
+                color: colors.randomElement() ?? palette.accent
+            ))
+        }
+        particles = list
+    }
+    
+    private func updateParticles(in size: CGSize) {
+        for i in 0..<particles.count {
+            // Constant smooth floating motion
+            particles[i].x += particles[i].vx
+            particles[i].y += particles[i].vy
+            
+            // Warp boundaries smoothly
+            let pad = 24.0
+            if particles[i].x < -pad { particles[i].x = Double(size.width) + pad }
+            else if particles[i].x > Double(size.width) + pad { particles[i].x = -pad }
+            
+            if particles[i].y < -pad { particles[i].y = Double(size.height) + pad }
+            else if particles[i].y > Double(size.height) + pad { particles[i].y = -pad }
         }
     }
 }

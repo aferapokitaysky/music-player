@@ -26,7 +26,10 @@ swiftc \
     Views/ServiceLogos.swift \
     Views/VisualizerView.swift \
     Views/PlayerControls.swift \
+    Views/AlbumRowView.swift \
+    Views/TrackRowView.swift \
     Views/MainView.swift \
+    Views/NotchMiniPlayerView.swift \
     -o AestheticPlayer
 
 if [ $? -eq 0 ]; then

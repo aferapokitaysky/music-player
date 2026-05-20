@@ -6,6 +6,27 @@ import SwiftUI
 final class KeyableWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        // If a text input has focus, let standard text editing and caret movement handle the keystrokes.
+        if let responder = firstResponder, responder.isKind(of: NSText.self) {
+            super.keyDown(with: event)
+            return
+        }
+
+        switch event.keyCode {
+        case 126: // Up Arrow
+            NotificationCenter.default.post(name: NSNotification.Name("appVolumeUp"), object: nil)
+        case 125: // Down Arrow
+            NotificationCenter.default.post(name: NSNotification.Name("appVolumeDown"), object: nil)
+        case 123: // Left Arrow
+            NotificationCenter.default.post(name: NSNotification.Name("appSeekBackward"), object: nil)
+        case 124: // Right Arrow
+            NotificationCenter.default.post(name: NSNotification.Name("appSeekForward"), object: nil)
+        default:
+            super.keyDown(with: event)
+        }
+    }
 }
 
 // Thin singleton so SwiftUI traffic-light buttons can drive AppKit behaviour
@@ -38,7 +59,11 @@ struct WindowDragArea: NSViewRepresentable {
 
     private final class _DragView: NSView {
         override func mouseDown(with event: NSEvent) {
-            window?.performDrag(with: event)
+            if event.clickCount == 2 {
+                WindowController.shared.zoom()
+            } else {
+                window?.performDrag(with: event)
+            }
         }
         // Pass-through: don't claim hits unless something is on top
         override func hitTest(_ point: NSPoint) -> NSView? {
@@ -47,17 +72,25 @@ struct WindowDragArea: NSViewRepresentable {
     }
 }
 
+final class NotchWindow: NSWindow {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var window: NSWindow!
+    var notchWindow: NSWindow?
     var visualEffectView: NSVisualEffectView!
     private let themeManager = ThemeManager.shared
+    var viewModel: PlayerViewModel!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        viewModel = PlayerViewModel()
         installMainMenu()
 
         // Default window size (3-column layout)
-        let width: CGFloat = 1080
-        let height: CGFloat = 640
+        let width: CGFloat = 1160
+        let height: CGFloat = 700
 
         let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1024, height: 768)
         let rect = NSRect(
@@ -67,10 +100,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             height: height
         )
 
-        // Create pure borderless window (premium floating widget)
+        // Create full-size transparent titlebar window with native traffic lights
         window = KeyableWindow(
             contentRect: rect,
-            styleMask: [.borderless, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -105,7 +138,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.contentView = visualEffectView
 
         // Host the SwiftUI MainView with shared ThemeManager
-        let contentView = MainView().environmentObject(themeManager)
+        let contentView = MainView(viewModel: viewModel).environmentObject(themeManager)
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -128,10 +161,61 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         WindowController.shared.window = window
 
+        // Setup Notch mini player window
+        setupNotchWindow()
+
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         window.makeKey()
+    }
+
+    private func setupNotchWindow() {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        
+        let wWidth: CGFloat = 500
+        let wHeight: CGFloat = 180
+        let notchRect = NSRect(
+            x: screenFrame.midX - wWidth / 2.0,
+            y: screenFrame.maxY - wHeight,
+            width: wWidth,
+            height: wHeight
+        )
+        
+        let notchWin = NotchWindow(
+            contentRect: notchRect,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        notchWin.isOpaque = false
+        notchWin.backgroundColor = .clear
+        notchWin.hasShadow = false
+        notchWin.level = .statusBar
+        notchWin.ignoresMouseEvents = false
+        notchWin.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        notchWin.acceptsMouseMovedEvents = true
+        
+        let notchView = NotchMiniPlayerView(viewModel: viewModel)
+            .environmentObject(themeManager)
+        let hostingView = NSHostingView(rootView: notchView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: wWidth, height: wHeight))
+        container.addSubview(hostingView)
+        
+        NSLayoutConstraint.activate([
+            hostingView.topAnchor.constraint(equalTo: container.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+        ])
+        
+        notchWin.contentView = container
+        notchWin.orderFrontRegardless()
+        
+        self.notchWindow = notchWin
     }
 
     @objc private func applyTheme() {
