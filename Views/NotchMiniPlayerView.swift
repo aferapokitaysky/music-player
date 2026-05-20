@@ -26,15 +26,18 @@ struct NotchMiniPlayerView: View {
             // Expanded size is 460x138, fitting perfectly below the notch area
             .frame(width: isHovered ? 460 : 140, height: isHovered ? 138 : 30)
             .background(
-                CustomRoundedCorner(
-                    topLeft: 0,
-                    topRight: 0,
-                    bottomLeft: isHovered ? 24 : 0,
-                    bottomRight: isHovered ? 24 : 0
+                VisualEffectView(
+                    material: themeManager.theme.nsMaterial,
+                    blendingMode: .behindWindow
                 )
-                .fill(themeManager.theme == .dark 
-                      ? Color.black.opacity(0.85) 
-                      : Color.white.opacity(0.90))
+                .clipShape(
+                    CustomRoundedCorner(
+                        topLeft: 0,
+                        topRight: 0,
+                        bottomLeft: isHovered ? 24 : 0,
+                        bottomRight: isHovered ? 24 : 0
+                    )
+                )
                 .background(
                     CustomRoundedCorner(
                         topLeft: 0,
@@ -42,7 +45,7 @@ struct NotchMiniPlayerView: View {
                         bottomLeft: isHovered ? 24 : 0,
                         bottomRight: isHovered ? 24 : 0
                     )
-                    .fill(palette.sidebar.opacity(0.65))
+                    .fill(palette.sidebar.opacity(themeManager.theme == .dark ? 0.30 : 0.45))
                 )
                 .overlay(
                     CustomRoundedCorner(
@@ -306,5 +309,24 @@ struct CustomRoundedCorner: Shape {
 
         path.closeSubpath()
         return path
+    }
+}
+
+// MARK: - Native macOS Glassmorphic Visual Effect View
+struct VisualEffectView: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
     }
 }
