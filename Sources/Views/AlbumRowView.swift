@@ -6,6 +6,7 @@ struct AlbumRowView: View {
     @EnvironmentObject var themeManager: ThemeManager
 
     @State private var isHovered = false
+    @State private var isTrashHovered = false
 
     private var palette: Palette { themeManager.theme.palette }
 
@@ -77,15 +78,44 @@ struct AlbumRowView: View {
                     .foregroundColor(palette.textTertiary)
             }
             .offset(x: isHovered ? 4 : 0)
-
+            
             Spacer(minLength: 0)
 
-            if viewModel.playingAlbumId == album.id {
+            if isHovered && album.kind != .demo {
+                // Trash button with hover effect
+                Button(action: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                        viewModel.deleteAlbumLocally(album.id)
+                    }
+                }) {
+                    Image(systemName: isTrashHovered ? "trash.fill" : "trash")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(isTrashHovered ? Color.red : palette.textTertiary)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            Circle()
+                                .fill(isTrashHovered ? Color.red.opacity(0.15) : palette.inset)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(isTrashHovered ? Color.red.opacity(0.5) : palette.stroke, lineWidth: 0.8)
+                        )
+                        .scaleEffect(isTrashHovered ? 1.18 : 1.0)
+                        .shadow(color: isTrashHovered ? Color.red.opacity(0.3) : .clear, radius: 6, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
+                .onHover { h in
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+                        isTrashHovered = h
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.7)))
+                .help("Удалить плейлист локально")
+            } else if viewModel.playingAlbumId == album.id {
                 Circle()
                     .fill(palette.accent)
                     .frame(width: 5, height: 5)
                     .shadow(color: palette.glow, radius: 4)
-                    .scaleEffect(isHovered ? 1.2 : 1.0)
             }
         }
         .padding(.horizontal, 8)
@@ -105,6 +135,7 @@ struct AlbumRowView: View {
                 x: 0,
                 y: isHovered ? 3 : 0)
         .animation(.spring(response: 0.25, dampingFraction: 0.70), value: isHovered)
+        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isTrashHovered)
         .onTapGesture {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
                 viewModel.selectedAlbumId = album.id
@@ -112,6 +143,7 @@ struct AlbumRowView: View {
         }
         .onHover { hovering in
             isHovered = hovering
+            if !hovering { isTrashHovered = false }
         }
         .contextMenu {
             if album.kind != .demo {

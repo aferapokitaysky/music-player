@@ -4,15 +4,21 @@ struct TrackRowView: View {
     let track: Track
     let album: Album
     @ObservedObject var viewModel: PlayerViewModel
+    var showsSearchAddButton = false
     @EnvironmentObject var themeManager: ThemeManager
 
     @State private var isHovered = false
+    @State private var isDotsHovered = false
+    @State private var isTrashHovered = false
+    @State private var showCreatePlaylistPopover = false
+    @State private var newPlaylistName = ""
 
     private var palette: Palette { themeManager.theme.palette }
 
     var body: some View {
         let isActive = viewModel.currentTrack == track
         HStack(spacing: 10) {
+            // Album art thumbnail
             ZStack {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(palette.inset)
@@ -44,6 +50,7 @@ struct TrackRowView: View {
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(palette.stroke, lineWidth: 1))
             .scaleEffect(isHovered ? 1.06 : 1.0)
 
+            // Track info
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -58,6 +65,28 @@ struct TrackRowView: View {
 
             Spacer()
 
+            // Action buttons area
+            if showsSearchAddButton {
+                // 3-dot menu button (shown on hover)
+                if isHovered || isDotsHovered {
+                    dotsMenuButton
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.7).combined(with: .opacity),
+                            removal: .scale(scale: 0.7).combined(with: .opacity)
+                        ))
+                }
+            } else {
+                // Trash button for library tracks (shown on hover)
+                if isHovered || isTrashHovered {
+                    trashButton
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.7).combined(with: .opacity),
+                            removal: .scale(scale: 0.7).combined(with: .opacity)
+                        ))
+                }
+            }
+
+            // Duration
             Text(formatDuration(track.duration))
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
                 .foregroundColor(isActive ? palette.accent.opacity(0.85) : palette.textTertiary)
@@ -75,7 +104,8 @@ struct TrackRowView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(isActive ? palette.accent.opacity(0.85) : (isHovered ? palette.strokeStrong.opacity(0.40) : Color.clear), lineWidth: isActive ? 1.5 : 1.0)
+                .stroke(isActive ? palette.accent.opacity(0.85) : (isHovered ? palette.strokeStrong.opacity(0.40) : Color.clear),
+                        lineWidth: isActive ? 1.5 : 1.0)
         )
         .contentShape(Rectangle())
         .scaleEffect(isHovered ? 1.02 : 1.0)
@@ -89,14 +119,129 @@ struct TrackRowView: View {
             isHovered = hovering
         }
         .contextMenu {
-            Button(role: .destructive) {
-                withAnimation {
-                    viewModel.deleteTrackLocally(track.id, from: album.id)
+            if showsSearchAddButton {
+                // Add to playlist submenu
+                if viewModel.localPlaylists.isEmpty {
+                    Button {
+                        _ = viewModel.createLocalPlaylist(named: "Мой плейлист")
+                        viewModel.addTrackToSearchTargetPlaylist(track)
+                    } label: {
+                        Label("Создать плейлист и добавить", systemImage: "plus.circle")
+                    }
+                } else {
+                    ForEach(viewModel.localPlaylists) { pl in
+                        Button {
+                            viewModel.addTrack(track, toLocalPlaylist: pl.id)
+                        } label: {
+                            Label("Добавить в «\(pl.name)»", systemImage: "music.note.list")
+                        }
+                    }
+                    Divider()
+                    Button {
+                        _ = viewModel.createLocalPlaylist(named: "Новый плейлист")
+                        viewModel.addTrackToSearchTargetPlaylist(track)
+                    } label: {
+                        Label("Создать новый плейлист", systemImage: "plus.circle")
+                    }
                 }
-            } label: {
-                Label("Удалить локально", systemImage: "trash")
+            } else {
+                Button(role: .destructive) {
+                    withAnimation {
+                        viewModel.deleteTrackLocally(track.id, from: album.id)
+                    }
+                } label: {
+                    Label("Удалить из плейлиста", systemImage: "trash")
+                }
             }
         }
+    }
+
+    // MARK: - 3-dot menu button
+    private var dotsMenuButton: some View {
+        Menu {
+            if viewModel.localPlaylists.isEmpty {
+                Button {
+                    _ = viewModel.createLocalPlaylist(named: "Мой плейлист")
+                    viewModel.addTrackToSearchTargetPlaylist(track)
+                } label: {
+                    Label("Создать плейлист и добавить", systemImage: "plus.circle")
+                }
+            } else {
+                ForEach(viewModel.localPlaylists) { pl in
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                            viewModel.addTrack(track, toLocalPlaylist: pl.id)
+                        }
+                    } label: {
+                        Label("В «\(pl.name)»", systemImage: "music.note.list")
+                    }
+                }
+                Divider()
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                        _ = viewModel.createLocalPlaylist(named: "Новый плейлист")
+                        viewModel.addTrackToSearchTargetPlaylist(track)
+                    }
+                } label: {
+                    Label("Создать новый плейлист", systemImage: "plus.circle.fill")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(isDotsHovered ? palette.textPrimary : palette.textSecondary)
+                .rotationEffect(.degrees(90))
+                .frame(width: 28, height: 28)
+                .background(
+                    Circle()
+                        .fill(isDotsHovered ? palette.textPrimary.opacity(0.15) : palette.inset)
+                )
+                .overlay(
+                    Circle()
+                        .stroke(isDotsHovered ? palette.strokeStrong : palette.stroke, lineWidth: 1)
+                )
+                .scaleEffect(isDotsHovered ? 1.12 : 1.0)
+                .shadow(color: isDotsHovered ? palette.glow.opacity(0.25) : .clear, radius: 6, x: 0, y: 2)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .onHover { h in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+                isDotsHovered = h
+            }
+        }
+        .help("Добавить в плейлист")
+    }
+
+    // MARK: - Trash button for library tracks
+    private var trashButton: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                viewModel.deleteTrackLocally(track.id, from: album.id)
+            }
+        }) {
+            Image(systemName: isTrashHovered ? "trash.fill" : "trash")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(isTrashHovered ? Color.red : palette.textTertiary)
+                .frame(width: 28, height: 28)
+                .background(
+                    Circle()
+                        .fill(isTrashHovered ? Color.red.opacity(0.15) : palette.inset)
+                )
+                .overlay(
+                    Circle()
+                        .stroke(isTrashHovered ? Color.red.opacity(0.5) : palette.stroke, lineWidth: 1)
+                )
+                .scaleEffect(isTrashHovered ? 1.15 : 1.0)
+                .shadow(color: isTrashHovered ? Color.red.opacity(0.3) : .clear, radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .onHover { h in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+                isTrashHovered = h
+            }
+        }
+        .help("Удалить трек")
     }
 
     private var activeBars: some View {

@@ -39,6 +39,11 @@ enum AlbumKind: String, Codable {
     case demo, uploads, likes, playlist, custom, spotify
 }
 
+enum SearchSource: String, Codable {
+    case soundCloud
+    case spotify
+}
+
 struct Album: Identifiable, Equatable, Codable {
     let id: String
     var name: String
@@ -94,8 +99,33 @@ class PlayerViewModel: ObservableObject {
     @Published var connectionStatus = ""
     @Published var isConnecting = false
 
+    // SoundCloud & Spotify Search
+    @Published var showSearchBar = false
+    @Published var searchQuery = ""
+    @Published var searchSource: SearchSource = .soundCloud
+    @Published var searchResults: [Track] = []
+    @Published var isSearching = false
+    @Published var searchStatus = ""
+    @Published var searchTargetPlaylistId: String? = nil
+    private var searchTask: Task<Void, Never>?
+
+    var searchAlbum: Album {
+        Album(id: "search", name: "Результаты поиска", kind: .custom, artworkUrl: nil, tracks: searchResults)
+    }
+    var localPlaylists: [Album] {
+        albums.filter { $0.kind == .custom && $0.id.hasPrefix("local_") }
+    }
+    var searchTargetPlaylist: Album? {
+        if let id = searchTargetPlaylistId,
+           let album = albums.first(where: { $0.id == id }) {
+            return album
+        }
+        return localPlaylists.first
+    }
+
     // Computed: the queue used by next/prev
     var playlist: [Track] {
+        if playingAlbumId == "search" { return searchResults }
         if let id = playingAlbumId, let a = albums.first(where: { $0.id == id }) { return a.tracks }
         if let id = selectedAlbumId, let a = albums.first(where: { $0.id == id }) { return a.tracks }
         return albums.first?.tracks ?? []
@@ -116,45 +146,10 @@ class PlayerViewModel: ObservableObject {
     // Internal Player
     private var player = AVPlayer()
     private var timeObserver: Any?
+    private var playerFinishedObserver: Any?
     private var visualizerTimer: Timer?
     private var beatCounter = 0.0
     private static var scClientId: String? = nil
-    
-    // Preloaded Demo Tracks
-    private let demoTracks = [
-        Track(
-            id: "demo1",
-            title: "Midnight Drive",
-            artist: "Synthwave Horizon",
-            albumArtUrl: "sparkles", // SF Symbol name
-            audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-            duration: 372.0
-        ),
-        Track(
-            id: "demo2",
-            title: "Chill Cafe Lo-Fi",
-            artist: "Bedtime Beatmaker",
-            albumArtUrl: "cup.and.saucer.fill",
-            audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-            duration: 344.0
-        ),
-        Track(
-            id: "demo3",
-            title: "Neon Reflections",
-            artist: "Retro-Future",
-            albumArtUrl: "play.house.fill",
-            audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-            duration: 302.0
-        ),
-        Track(
-            id: "demo4",
-            title: "Rainy Sunset",
-            artist: "Lofi Library",
-            albumArtUrl: "cloud.rain.fill",
-            audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-            duration: 318.0
-        )
-    ]
     
     init() {
         // Restore OAuth from Keychain if present
@@ -166,17 +161,16 @@ class PlayerViewModel: ObservableObject {
             self.spotifyToken = savedSpotify
         }
 
-        // Try to load cached library; fall back to demo album
-        let cached = LibraryStore.load()
-        if !cached.isEmpty {
-            self.albums = cached
-        } else {
-            let demo = Album(id: "demo", name: "Demo", kind: .demo, artworkUrl: nil, tracks: demoTracks)
-            self.albums = [demo]
+        let loadedAlbums = LibraryStore.load()
+        let cached = loadedAlbums.filter { $0.kind != .demo }
+        self.albums = cached
+        if cached.count != loadedAlbums.count {
+            LibraryStore.save(cached)
         }
         self.selectedAlbumId = self.albums.first?.id
         self.playingAlbumId = self.selectedAlbumId
         self.currentTrack = self.albums.first?.tracks.first
+        self.searchTargetPlaylistId = self.localPlaylists.first?.id
 
         setupAudioSession()
         setupVisualizerTimer()
@@ -225,11 +219,14 @@ class PlayerViewModel: ObservableObject {
         }
     }
     func clearLibrary() {
-        let demo = Album(id: "demo", name: "Demo", kind: .demo, artworkUrl: nil, tracks: demoTracks)
-        albums = [demo]
-        selectedAlbumId = demo.id
-        playingAlbumId = demo.id
-        currentTrack = demo.tracks.first
+        player.pause()
+        albums = []
+        selectedAlbumId = nil
+        playingAlbumId = nil
+        currentTrack = nil
+        currentTime = 0.0
+        isPlaying = false
+        searchTargetPlaylistId = nil
         spotifyToken = ""
         soundCloudUrl = ""
         soundCloudOAuth = ""
@@ -243,6 +240,9 @@ class PlayerViewModel: ObservableObject {
         if selectedAlbumId == albumId {
             selectedAlbumId = albums.first?.id
         }
+        if searchTargetPlaylistId == albumId {
+            searchTargetPlaylistId = localPlaylists.first?.id
+        }
         if playingAlbumId == albumId {
             playingAlbumId = selectedAlbumId
             if let track = currentTrack, !playlist.contains(track) {
@@ -252,12 +252,74 @@ class PlayerViewModel: ObservableObject {
         persistLibrary()
     }
 
+    @discardableResult
+    func createLocalPlaylist(named rawName: String) -> Album {
+        let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseName = trimmed.isEmpty ? "Новый плейлист" : trimmed
+        let existingNames = Set(albums.map { $0.name })
+        var finalName = baseName
+        var suffix = 2
+        while existingNames.contains(finalName) {
+            finalName = "\(baseName) \(suffix)"
+            suffix += 1
+        }
+
+        let album = Album(
+            id: "local_\(UUID().uuidString)",
+            name: finalName,
+            kind: .custom,
+            artworkUrl: nil,
+            tracks: []
+        )
+        albums.append(album)
+        selectedAlbumId = album.id
+        if playingAlbumId == nil {
+            playingAlbumId = album.id
+        }
+        searchTargetPlaylistId = album.id
+        persistLibrary()
+        return album
+    }
+
+    func addTrackToSearchTargetPlaylist(_ track: Track) {
+        let targetId: String
+        if let id = searchTargetPlaylist?.id {
+            targetId = id
+        } else {
+            targetId = createLocalPlaylist(named: "Мой плейлист").id
+        }
+        addTrack(track, toLocalPlaylist: targetId)
+    }
+
+    func addTrack(_ track: Track, toLocalPlaylist playlistId: String) {
+        guard let index = albums.firstIndex(where: { $0.id == playlistId }) else { return }
+        if albums[index].tracks.contains(where: { $0.id == track.id }) {
+            searchStatus = "Уже есть в \(albums[index].name)"
+            return
+        }
+        albums[index].tracks.append(track)
+        if albums[index].artworkUrl == nil {
+            albums[index].artworkUrl = track.albumArtUrl
+        }
+        selectedAlbumId = albums[index].id
+        searchTargetPlaylistId = albums[index].id
+        searchStatus = "Добавлено в \(albums[index].name)"
+        persistLibrary()
+    }
+
     func deleteTrackLocally(_ trackId: String, from albumId: String) {
         guard let index = albums.firstIndex(where: { $0.id == albumId }) else { return }
         albums[index].tracks.removeAll(where: { $0.id == trackId })
         
         if currentTrack?.id == trackId && playingAlbumId == albumId {
-            nextTrack()
+            if albums[index].tracks.isEmpty {
+                player.pause()
+                currentTrack = nil
+                currentTime = 0.0
+                isPlaying = false
+            } else {
+                nextTrack()
+            }
         }
         persistLibrary()
     }
@@ -307,18 +369,25 @@ class PlayerViewModel: ObservableObject {
         if let observer = timeObserver {
             player.removeTimeObserver(observer)
         }
+        NotificationCenter.default.removeObserver(self)
         visualizerTimer?.invalidate()
     }
     
     private func setupAudioSession() {
-        // Allow AVPlayer to play audio in the background on macOS
-        // (Typically managed automatically, but good practice to initialize)
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(playerDidFinishPlaying),
+            selector: #selector(playerItemDidPlayToEndTime(_:)),
             name: .AVPlayerItemDidPlayToEndTime,
             object: nil
         )
+    }
+
+    @objc private func playerItemDidPlayToEndTime(_ notification: Notification) {
+        Self.log("AVPlayerItemDidPlayToEndTime notification received. Hopping to main queue to advance.")
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.nextTrack()
+        }
     }
     
     private func setupTimeObserver() {
@@ -330,10 +399,6 @@ class PlayerViewModel: ObservableObject {
                 self.currentTime = time.seconds
             }
         }
-    }
-    
-    @objc private func playerDidFinishPlaying() {
-        nextTrack()
     }
     
     // MARK: - Playback Controls
@@ -762,6 +827,216 @@ class PlayerViewModel: ObservableObject {
         isConnecting = false
     }
 
+    // MARK: - Search Functionality
+
+    func clearSearch() {
+        resetSearch(keepingQuery: false)
+    }
+
+    func resetSearch(keepingQuery: Bool = true) {
+        searchTask?.cancel()
+        searchTask = nil
+        if !keepingQuery {
+            searchQuery = ""
+        }
+        searchResults = []
+        isSearching = false
+        searchStatus = ""
+    }
+
+    func executeSearch() {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchTask?.cancel()
+        searchTask = nil
+
+        guard !query.isEmpty else {
+            searchResults = []
+            isSearching = false
+            searchStatus = ""
+            return
+        }
+
+        isSearching = true
+        searchResults = []
+
+        switch searchSource {
+        case .soundCloud:
+            searchStatus = "Поиск в SoundCloud..."
+            searchTask = Task {
+                do {
+                    // 1. Get client ID
+                    let clientId: String
+                    if let cached = Self.scClientId {
+                        clientId = cached
+                    } else {
+                        let homepageURL = URL(string: "https://soundcloud.com")!
+                        let html = try await Self.fetchString(url: homepageURL)
+                        clientId = try await Self.extractClientId(fromHTML: html)
+                        Self.scClientId = clientId
+                    }
+
+                    // 2. Query the search endpoint
+                    guard var comps = URLComponents(string: "https://api-v2.soundcloud.com/search/tracks") else {
+                        throw NSError(domain: "SC", code: 0)
+                    }
+                    let oauthOpt: String? = soundCloudOAuth.isEmpty ? nil : soundCloudOAuth
+                    comps.queryItems = [
+                        URLQueryItem(name: "q", value: query),
+                        URLQueryItem(name: "client_id", value: clientId),
+                        URLQueryItem(name: "limit", value: "25")
+                    ]
+
+                    guard let searchURL = comps.url else { throw NSError(domain: "SC", code: 1) }
+                    let searchData = try await Self.fetchData(url: searchURL, oauth: oauthOpt)
+                    if Task.isCancelled { return }
+
+                    guard let json = try JSONSerialization.jsonObject(with: searchData) as? [String: Any],
+                          let collection = json["collection"] as? [[String: Any]] else {
+                        throw NSError(domain: "SC", code: 2, userInfo: [NSLocalizedDescriptionKey: "Невозможно разобрать результаты"])
+                    }
+
+                    await MainActor.run {
+                        if Task.isCancelled { return }
+                        self.searchStatus = "Обработка треков..."
+                    }
+
+                    // 3. Convert collection to Tracks in parallel
+                    let tracks = await Self.buildTracks(from: collection, clientId: clientId, oauth: oauthOpt) { idx, total in
+                        await MainActor.run {
+                            if Task.isCancelled { return }
+                            self.searchStatus = "Декодирование \(idx)/\(total)..."
+                        }
+                    }
+                    if Task.isCancelled { return }
+
+                    await MainActor.run {
+                        if Task.isCancelled { return }
+                        self.searchResults = tracks
+                        self.isSearching = false
+                        self.searchTask = nil
+                        if tracks.isEmpty {
+                            self.searchStatus = "Ничего не найдено"
+                        } else {
+                            self.searchStatus = ""
+                        }
+                    }
+                } catch {
+                    if Task.isCancelled { return }
+                    Self.log("Search error: \(error)")
+                    await MainActor.run {
+                        if Task.isCancelled { return }
+                        self.searchResults = []
+                        self.isSearching = false
+                        self.searchTask = nil
+                        self.searchStatus = "Ошибка: \(error.localizedDescription)"
+                    }
+                }
+            }
+
+        case .spotify:
+            searchStatus = "Поиск в Spotify..."
+            searchTask = Task {
+                do {
+                    let tracks = try await searchSpotify()
+                    if Task.isCancelled { return }
+                    await MainActor.run {
+                        if Task.isCancelled { return }
+                        self.searchResults = tracks
+                        self.isSearching = false
+                        self.searchTask = nil
+                        if tracks.isEmpty {
+                            self.searchStatus = "Ничего не найдено (или нет 30с превью)"
+                        } else {
+                            self.searchStatus = ""
+                        }
+                    }
+                } catch {
+                    if Task.isCancelled { return }
+                    Self.log("Spotify search error: \(error)")
+                    await MainActor.run {
+                        if Task.isCancelled { return }
+                        self.searchResults = []
+                        self.isSearching = false
+                        self.searchTask = nil
+                        self.searchStatus = "Ошибка: \(error.localizedDescription)"
+                    }
+                }
+            }
+        }
+    }
+
+    private func searchSpotify() async throws -> [Track] {
+        guard !spotifyToken.isEmpty else {
+            throw NSError(domain: "Spotify", code: 401, userInfo: [NSLocalizedDescriptionKey: "Введите токен Spotify во вкладке 'Подключения'!"])
+        }
+
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var comps = URLComponents(string: "https://api.spotify.com/v1/search") else {
+            throw NSError(domain: "Spotify", code: 0)
+        }
+        comps.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "type", value: "track"),
+            URLQueryItem(name: "limit", value: "25")
+        ]
+
+        guard let url = comps.url else { throw NSError(domain: "Spotify", code: 1) }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(spotifyToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw NSError(domain: "Spotify", code: 401, userInfo: [NSLocalizedDescriptionKey: "Токен Spotify истек или недействителен"])
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw NSError(domain: "Spotify", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Ошибка API Spotify (\(httpResponse.statusCode))"])
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tracksObj = json["tracks"] as? [String: Any],
+              let items = tracksObj["items"] as? [[String: Any]] else {
+            return []
+        }
+
+        var results: [Track] = []
+        for item in items {
+            guard let name = item["name"] as? String,
+                  let artists = item["artists"] as? [[String: Any]],
+                  let artistName = artists.first?["name"] as? String,
+                  let previewUrl = item["preview_url"] as? String,
+                  !previewUrl.isEmpty else {
+                continue
+            }
+
+            let trackId = item["id"] as? String ?? UUID().uuidString
+            let durationMs = item["duration_ms"] as? Double ?? 30000.0
+
+            var artUrl: String?
+            if let album = item["album"] as? [String: Any],
+               let images = album["images"] as? [[String: Any]],
+               let firstImage = images.first,
+               let urlStr = firstImage["url"] as? String {
+                artUrl = urlStr
+            }
+
+            results.append(Track(
+                id: "spotify_search_\(trackId)",
+                title: name,
+                artist: artistName,
+                albumArtUrl: artUrl,
+                audioUrl: previewUrl,
+                duration: durationMs / 1000.0
+            ))
+        }
+        return results
+    }
+
     // MARK: - SoundCloud higher-level helpers
 
     private static func fetchCollection(urlString: String, clientId: String, oauth: String?) async throws -> [[String: Any]] {
@@ -792,6 +1067,7 @@ class PlayerViewModel: ObservableObject {
     ) async -> [Track] {
         var built: [Track] = []
         for (idx, raw) in rawList.enumerated() {
+            if Task.isCancelled { return built }
             await progress(idx + 1, rawList.count)
             var fullRaw = raw
             if (raw["media"] as? [String: Any]) == nil, let tid = raw["id"] as? Int {

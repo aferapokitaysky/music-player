@@ -6,6 +6,10 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var isHoveringControls = false
     @State private var isWindowKey = true
+    @State private var newPlaylistName = ""
+    @State private var showNewPlaylistField = false
+    @State private var isCreatePlaylistHovered = false
+    @State private var isSettingsCloseHovered = false
 
     private var palette: Palette { themeManager.theme.palette }
 
@@ -30,7 +34,7 @@ struct MainView: View {
                 }
 
                 tracksColumn
-                    .frame(width: 280)
+                    .frame(width: 360)
                     .background(palette.sidebar.opacity(viewModel.uiOpacity * 0.9))
 
                 Rectangle().fill(palette.divider).frame(width: 1)
@@ -80,18 +84,92 @@ struct MainView: View {
 
             // Brand
             HStack(spacing: 10) {
-                AestheticLogoView(size: 28, color: palette.textPrimary)
+                AestheticLogoView(size: 44, color: palette.textPrimary)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Aesthetic")
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    Text("Aferapokitaysky")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
                     Text("Player · Pro")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(.system(size: 8, design: .monospaced))
                         .foregroundColor(palette.textTertiary)
                 }
             }
             .padding(.horizontal, 14)
 
-            sectionLabel("БИБЛИОТЕКА")
+            // Library header with Create Playlist button
+            HStack(spacing: 0) {
+                sectionLabel("БИБЛИОТЕКА")
+                Spacer()
+                Button(action: {
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.72)) {
+                        showNewPlaylistField.toggle()
+                        if !showNewPlaylistField { newPlaylistName = "" }
+                    }
+                }) {
+                    Image(systemName: showNewPlaylistField ? "xmark" : "plus")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(isCreatePlaylistHovered ? palette.textPrimary : palette.textSecondary)
+                        .frame(width: 22, height: 22)
+                        .background(
+                            Circle()
+                                .fill(isCreatePlaylistHovered ? palette.inset : Color.clear)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(isCreatePlaylistHovered ? palette.stroke : Color.clear, lineWidth: 1)
+                        )
+                        .scaleEffect(isCreatePlaylistHovered ? 1.18 : 1.0)
+                        .shadow(color: isCreatePlaylistHovered ? palette.glow.opacity(0.2) : .clear, radius: 4, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 14)
+                .onHover { h in
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+                        isCreatePlaylistHovered = h
+                    }
+                }
+                .help(showNewPlaylistField ? "Отмена" : "Создать плейлист")
+            }
+
+            // Inline new playlist field
+            if showNewPlaylistField {
+                HStack(spacing: 8) {
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(palette.accent)
+
+                    TextField("Название плейлиста", text: $newPlaylistName, onCommit: {
+                        createNewPlaylist()
+                    })
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+
+                    let canCreate = !newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    Button(action: { createNewPlaylist() }) {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(canCreate ? palette.textPrimary : palette.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canCreate)
+                    .help("Создать")
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(palette.inset.opacity(0.85))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(palette.accent.opacity(0.35), lineWidth: 1)
+                )
+                .padding(.horizontal, 8)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.95, anchor: .top)),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
+            }
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 4) {
@@ -169,10 +247,11 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack(alignment: .topLeading) {
                 WindowDragArea().frame(height: 44)
+                
                 HStack(spacing: 12) {
                     if viewModel.sidebarCollapsed {
                         Spacer().frame(width: 80)
-                        
+
                         Button(action: {
                             withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
                                 viewModel.sidebarCollapsed = false
@@ -189,13 +268,52 @@ struct MainView: View {
                         .buttonStyle(.plain)
                         .help("Показать альбомы")
                     }
+
                     Spacer()
+
+                    searchToggleButton
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 14)
+                .frame(height: 44)
             }
 
-            if let album = viewModel.selectedAlbum {
+            if viewModel.showSearchBar {
+                searchPanel
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.98, anchor: .top)),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+            }
+
+            if viewModel.showSearchBar && (!viewModel.searchResults.isEmpty || viewModel.isSearching || !viewModel.searchStatus.isEmpty) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Результаты поиска")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        Spacer()
+                        if !viewModel.searchStatus.isEmpty {
+                            Text(viewModel.searchStatus)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(palette.textTertiary)
+                        }
+                    }
+                    Text("\(viewModel.searchResults.count) треков найдено")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(palette.textTertiary)
+                }
+                .padding(.horizontal, 14)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 4) {
+                        ForEach(viewModel.searchResults) { track in
+                            TrackRowView(track: track, album: viewModel.searchAlbum, viewModel: viewModel, showsSearchAddButton: true)
+                                .environmentObject(themeManager)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 12)
+                }
+            } else if let album = viewModel.selectedAlbum {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(album.name)
                         .font(.system(size: 16, weight: .heavy, design: .rounded))
@@ -218,12 +336,188 @@ struct MainView: View {
                 }
             } else {
                 Spacer()
-                Text("Выберите альбом")
+                Text("Создайте плейлист или найдите трек")
                     .font(.system(size: 12, design: .rounded))
                     .foregroundColor(palette.textTertiary)
                     .frame(maxWidth: .infinity)
                 Spacer()
             }
+        }
+    }
+
+    private var searchToggleButton: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                if viewModel.showSearchBar {
+                    closeSearch()
+                } else {
+                    viewModel.showSearchBar = true
+                }
+            }
+        }) {
+            HStack(spacing: 7) {
+                Image(systemName: viewModel.showSearchBar ? "xmark" : "magnifyingglass")
+                    .font(.system(size: 11, weight: .bold))
+
+                if !viewModel.showSearchBar {
+                    Text("Поиск")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                }
+            }
+            .foregroundColor(viewModel.showSearchBar
+                             ? (themeManager.theme == .dark ? .black : .white)
+                             : palette.textSecondary)
+            .frame(width: viewModel.showSearchBar ? 28 : nil, height: 28)
+            .padding(.horizontal, viewModel.showSearchBar ? 0 : 10)
+            .background(
+                Capsule()
+                    .fill(viewModel.showSearchBar ? palette.textPrimary : palette.inset)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(viewModel.showSearchBar ? palette.textPrimary.opacity(0.35) : palette.stroke, lineWidth: 1)
+            )
+            .shadow(color: viewModel.showSearchBar ? palette.glow.opacity(0.35) : .clear, radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+        .help(viewModel.showSearchBar ? "Скрыть поиск" : "Открыть поиск")
+    }
+
+    private var searchPanel: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 9) {
+                ZStack {
+                    Circle()
+                        .fill(palette.textPrimary.opacity(0.12))
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(palette.textPrimary)
+                }
+                .frame(width: 26, height: 26)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Поиск треков")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundColor(palette.textPrimary)
+                    Text(viewModel.searchSource == .soundCloud ? "SoundCloud" : "Spotify preview")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundColor(palette.textTertiary)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 0) {
+                searchSourceButton(source: .soundCloud, title: "SoundCloud", logo: AnyView(SoundCloudLogo(size: 12)))
+                searchSourceButton(source: .spotify, title: "Spotify", logo: AnyView(SpotifyLogo(size: 12)))
+            }
+            .padding(3)
+            .background(RoundedRectangle(cornerRadius: 8).fill(palette.inset))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(palette.stroke, lineWidth: 1))
+
+            // Tip: hover a track in search results → tap ••• to add to a playlist
+
+            HStack(spacing: 8) {
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(palette.textSecondary)
+
+                    TextField(viewModel.searchSource == .soundCloud ? "Поиск в SoundCloud..." : "Поиск в Spotify...", text: $viewModel.searchQuery, onCommit: {
+                        viewModel.executeSearch()
+                    })
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(palette.textPrimary)
+
+                    if !viewModel.searchQuery.isEmpty {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                viewModel.clearSearch()
+                            }
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(palette.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Очистить")
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(RoundedRectangle(cornerRadius: 9).fill(palette.inset))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(palette.stroke, lineWidth: 1))
+
+                if viewModel.isSearching {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.62)
+                        .frame(width: 28, height: 28)
+                } else {
+                    let canSearch = !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    Button(action: { viewModel.executeSearch() }) {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(canSearch ? palette.textPrimary : palette.textTertiary)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSearch)
+                    .help("Найти")
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(palette.cardElevated.opacity(themeManager.theme == .dark ? 0.74 : 0.82))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(palette.strokeStrong.opacity(0.72), lineWidth: 1)
+        )
+        .shadow(color: palette.cardShadow.opacity(0.18), radius: 14, x: 0, y: 8)
+        .padding(.horizontal, 14)
+    }
+
+    private func searchSourceButton(source: SearchSource, title: String, logo: AnyView) -> some View {
+        let isActive = viewModel.searchSource == source
+
+        return Button(action: {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.7)) {
+                viewModel.searchSource = source
+                viewModel.resetSearch(keepingQuery: true)
+            }
+        }) {
+            HStack(spacing: 6) {
+                logo
+                Text(title)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+            }
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isActive ? palette.textPrimary.opacity(0.12) : Color.clear)
+            )
+            .foregroundColor(isActive ? palette.textPrimary : palette.textSecondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func closeSearch() {
+        viewModel.showSearchBar = false
+        viewModel.clearSearch()
+    }
+
+    private func createNewPlaylist() {
+        let name = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        _ = viewModel.createLocalPlaylist(named: name)
+        newPlaylistName = ""
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.72)) {
+            showNewPlaylistField = false
         }
     }
 
@@ -330,11 +624,18 @@ struct MainView: View {
                             showSettings = false
                         }
                     }) {
-                        Image(systemName: "xmark.circle.fill")
+                        Image(systemName: isSettingsCloseHovered ? "xmark.circle.fill" : "xmark.circle")
                             .font(.title3)
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(isSettingsCloseHovered ? Color.red.opacity(0.85) : palette.textTertiary)
+                            .scaleEffect(isSettingsCloseHovered ? 1.18 : 1.0)
+                            .shadow(color: isSettingsCloseHovered ? Color.red.opacity(0.3) : .clear, radius: 6, x: 0, y: 2)
                     }
                     .buttonStyle(.plain)
+                    .onHover { h in
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+                            isSettingsCloseHovered = h
+                        }
+                    }
                 }
 
                 // Spotify
@@ -693,7 +994,3 @@ struct RotationPerspectiveModifier: ViewModifier {
             .opacity(opacity)
     }
 }
-
-
-
-

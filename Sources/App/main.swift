@@ -65,9 +65,9 @@ struct WindowDragArea: NSViewRepresentable {
                 window?.performDrag(with: event)
             }
         }
-        // Pass-through: don't claim hits unless something is on top
+        // Pass-through: don't claim hits unless the point is actually inside our bounds!
         override func hitTest(_ point: NSPoint) -> NSView? {
-            return self
+            return NSPointInRect(point, self.bounds) ? self : nil
         }
     }
 }
@@ -75,6 +75,65 @@ struct WindowDragArea: NSViewRepresentable {
 final class NotchWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+}
+
+final class NotchHostingView<Content: View>: NSHostingView<Content> {
+    var isNotchExpanded = false
+    private var trackingArea: NSTrackingArea?
+    
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("NotchHoverStateChanged"), object: nil, queue: .main) { [weak self] notification in
+            if let expanded = notification.object as? Bool {
+                self?.isNotchExpanded = expanded
+            }
+        }
+    }
+    
+    @objc required dynamic init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        let options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+        let newArea = NSTrackingArea(rect: bounds, options: options, owner: self, userInfo: nil)
+        addTrackingArea(newArea)
+        trackingArea = newArea
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        NotificationCenter.default.post(name: NSNotification.Name("NotchHoverStateChanged"), object: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        NotificationCenter.default.post(name: NSNotification.Name("NotchHoverStateChanged"), object: false)
+    }
+    
+    // Natively pass through clicks that are outside the actual physical notch UI!
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if isNotchExpanded {
+            // New premium visual notch dimensions: 500x200 (max possible height with volume slider expanded), dynamically centered in window bounds
+            let visualWidth: CGFloat = 500
+            let visualHeight: CGFloat = 200
+            let minX = (bounds.width - visualWidth) / 2.0
+            let maxX = bounds.width - minX
+            let minY = bounds.height - visualHeight
+            let maxY = bounds.height
+            
+            if point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY {
+                return super.hitTest(point)
+            }
+        } else {
+            // Collapsed: let everything pass through! Clicks are never needed when collapsed.
+            return nil
+        }
+        
+        return nil
+    }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -158,6 +217,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             name: .themeDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateNotchWindowFrame(_:)),
+            name: NSNotification.Name("NotchHoverStateChanged"),
+            object: nil
+        )
 
         WindowController.shared.window = window
 
@@ -171,11 +236,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func setupNotchWindow() {
-        let screen = NSScreen.main ?? NSScreen.screens.first
+        let screen = window?.screen ?? NSScreen.main ?? NSScreen.screens.first
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         
-        let wWidth: CGFloat = 500
-        let wHeight: CGFloat = 180
+        // Starts compact (172x32) matching MacBook physical notch exactly
+        let wWidth: CGFloat = 172
+        let wHeight: CGFloat = 32
         let notchRect = NSRect(
             x: screenFrame.midX - wWidth / 2.0,
             y: screenFrame.maxY - wHeight,
@@ -202,7 +268,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         let notchView = NotchMiniPlayerView(viewModel: viewModel)
             .environmentObject(themeManager)
-        let hostingView = NSHostingView(rootView: notchView)
+        let hostingView = NotchHostingView(rootView: notchView)
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         
@@ -210,6 +276,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         notchWin.orderFrontRegardless()
         
         self.notchWindow = notchWin
+    }
+
+    @objc private func updateNotchWindowFrame(_ notification: Notification) {
+        guard let notchWin = notchWindow,
+              let expanded = notification.object as? Bool else { return }
+        
+        let screen = window?.screen ?? notchWin.screen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screenFrame = screen?.frame else { return }
+
+        // Premium expanded window dimensions: 560 width, 220 height (provides plenty of margin for dynamic expansion)
+        let targetWidth: CGFloat = expanded ? 560 : 172
+        let targetHeight: CGFloat = expanded ? 220 : 32
+        let targetFrame = NSRect(
+            x: screenFrame.midX - targetWidth / 2.0,
+            y: screenFrame.maxY - targetHeight,
+            width: targetWidth,
+            height: targetHeight
+        )
+
+        notchWin.setFrame(targetFrame, display: true, animate: false)
+        
     }
  
     @objc private func applyTheme() {
@@ -227,8 +314,39 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        if let w = window {
+            if w.isMiniaturized {
+                w.deminiaturize(nil)
+            }
+            w.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if let w = window {
+            if w.isMiniaturized {
+                w.deminiaturize(nil)
+            }
+            w.makeKeyAndOrderFront(nil)
+        }
+        return true
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        collapseNotchWindow()
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) {
+        collapseNotchWindow()
+    }
+
+    private func collapseNotchWindow() {
+        NotificationCenter.default.post(name: NSNotification.Name("NotchHoverStateChanged"), object: false)
     }
 
     // Install a minimal main menu so that Cmd+C / Cmd+V / Cmd+X / Cmd+A
@@ -240,7 +358,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let appItem = NSMenuItem()
         mainMenu.addItem(appItem)
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About Aesthetic Player",
+        appMenu.addItem(withTitle: "About Aferapokitaysky Player",
                         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                         keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())

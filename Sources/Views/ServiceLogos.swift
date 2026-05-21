@@ -202,30 +202,41 @@ struct AestheticLogoView: View {
     var color: Color = .white
     
     var body: some View {
-        Canvas { ctx, size in
-            let w = size.width
-            let h = size.height
-            
-            // Stylized concentric outer ring
-            let outerPath = Path(ellipseIn: CGRect(x: 1.5, y: 1.5, width: w - 3, height: h - 3))
-            ctx.stroke(outerPath, with: .color(color.opacity(0.18)), style: StrokeStyle(lineWidth: 1.5))
-            
-            // Symmetrical, cyber-minimalist soundwave bars
-            let count = 5
-            let spacing: CGFloat = 3.0
-            let barW: CGFloat = 2.0
-            let startX: CGFloat = (w - (CGFloat(count) * barW + CGFloat(count - 1) * spacing)) / 2.0
-            
-            let heights: [CGFloat] = [0.42, 0.70, 0.90, 0.70, 0.42]
-            let opacities: [Double] = [0.45, 0.75, 1.0, 0.75, 0.45]
-            
-            for i in 0..<count {
-                let barH = h * heights[i]
-                let x = startX + CGFloat(i) * (barW + spacing)
-                let y = (h - barH) / 2.0
-                
-                let path = Path(roundedRect: CGRect(x: x, y: y, width: barW, height: barH), cornerRadius: 1.0)
-                ctx.fill(path, with: .color(color.opacity(opacities[i])))
+        Group {
+            if let path = Bundle.main.path(forResource: "logo", ofType: "png") ?? ServiceLogosHelper.findLocalPath(for: "logo.png"),
+               let nsImage = NSImage(contentsOfFile: path) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .clipShape(Circle())
+            } else {
+                Canvas { ctx, size in
+                    let w = size.width
+                    let h = size.height
+                    
+                    // Stylized concentric outer ring
+                    let outerPath = Path(ellipseIn: CGRect(x: 1.5, y: 1.5, width: w - 3, height: h - 3))
+                    ctx.stroke(outerPath, with: .color(color.opacity(0.18)), style: StrokeStyle(lineWidth: 1.5))
+                    
+                    // Symmetrical, cyber-minimalist soundwave bars
+                    let count = 5
+                    let spacing: CGFloat = 3.0
+                    let barW: CGFloat = 2.0
+                    let startX: CGFloat = (w - (CGFloat(count) * barW + CGFloat(count - 1) * spacing)) / 2.0
+                    
+                    let heights: [CGFloat] = [0.42, 0.70, 0.90, 0.70, 0.42]
+                    let opacities: [Double] = [0.45, 0.75, 1.0, 0.75, 0.45]
+                    
+                    for i in 0..<count {
+                        let barH = h * heights[i]
+                        let x = startX + CGFloat(i) * (barW + spacing)
+                        let y = (h - barH) / 2.0
+                        
+                        let path = Path(roundedRect: CGRect(x: x, y: y, width: barW, height: barH), cornerRadius: 1.0)
+                        ctx.fill(path, with: .color(color.opacity(opacities[i])))
+                    }
+                }
             }
         }
         .frame(width: size, height: size)

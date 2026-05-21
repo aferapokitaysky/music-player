@@ -1,4 +1,4 @@
-# Aesthetic Player for macOS 🎵✨
+# Aferapokitaysky Player for macOS 🎵✨
 
 [Русский текст ниже](#aesthetic-player-для-macos)
 
@@ -36,7 +36,7 @@ aesthetic-player/
 
 1. Open your terminal and navigate to the project directory:
    ```bash
-   cd /path/to/aesthetic-player
+   cd /path/to/aferapokitaysky-player
    ```
 2. Run the build script to compile the application:
    ```bash
@@ -44,14 +44,14 @@ aesthetic-player/
    ```
 3. Launch the compiled executable:
    ```bash
-   ./AestheticPlayer
+   ./Aferapokitaysky
    ```
 
 *(Note: During the first launch, macOS may request Developer Tools Access or Keychain permissions depending on your local Git config and security settings).*
 
 ---
 
-# Aesthetic Player для macOS
+# Aferapokitaysky Player для macOS
 
 Современный, эстетичный и полностью нативный медиаплеер для macOS. Проект сфокусирован на премиальном дизайне с эффектом матового стекла (glassmorphism), плавных анимациях и идеальной интеграции с физической «челкой» (notch) на новых MacBook.
 
@@ -87,7 +87,7 @@ aesthetic-player/
 
 1. Откройте терминал и перейдите в папку с проектом:
    ```bash
-   cd /path/to/aesthetic-player
+   cd /path/to/aferapokitaysky-player
    ```
 2. Запустите скрипт сборки для компиляции:
    ```bash
@@ -95,7 +95,7 @@ aesthetic-player/
    ```
 3. Запустите готовый исполняемый файл:
    ```bash
-   ./AestheticPlayer
+   ./Aferapokitaysky
    ```
 
 *(Примечание: При первом запуске macOS может однократно запросить доступ к инструментам разработчика (Developer Tools Access) в целях безопасности).*
