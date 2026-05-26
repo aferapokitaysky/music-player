@@ -72,7 +72,7 @@ struct WindowDragArea: NSViewRepresentable {
     }
 }
 
-final class NotchWindow: NSWindow {
+final class NotchWindow: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
@@ -116,9 +116,9 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
     // Natively pass through clicks that are outside the actual physical notch UI!
     override func hitTest(_ point: NSPoint) -> NSView? {
         if isNotchExpanded {
-            // New premium visual notch dimensions: 500x200 (max possible height with volume slider expanded), dynamically centered in window bounds
+            // New premium visual notch dimensions: 500x240 (max possible height with volume slider expanded), dynamically centered in window bounds
             let visualWidth: CGFloat = 500
-            let visualHeight: CGFloat = 200
+            let visualHeight: CGFloat = 240
             let minX = (bounds.width - visualWidth) / 2.0
             let maxX = bounds.width - minX
             let minY = bounds.height - visualHeight
@@ -251,7 +251,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         let notchWin = NotchWindow(
             contentRect: notchRect,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -278,25 +278,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.notchWindow = notchWin
     }
 
+    private var isNotchExpanded = false
+    private var collapseWorkItem: DispatchWorkItem?
+
     @objc private func updateNotchWindowFrame(_ notification: Notification) {
         guard let notchWin = notchWindow,
               let expanded = notification.object as? Bool else { return }
         
+        self.isNotchExpanded = expanded
+        
         let screen = window?.screen ?? notchWin.screen ?? NSScreen.main ?? NSScreen.screens.first
         guard let screenFrame = screen?.frame else { return }
 
-        // Premium expanded window dimensions: 560 width, 220 height (provides plenty of margin for dynamic expansion)
-        let targetWidth: CGFloat = expanded ? 560 : 172
-        let targetHeight: CGFloat = expanded ? 220 : 32
-        let targetFrame = NSRect(
-            x: screenFrame.midX - targetWidth / 2.0,
-            y: screenFrame.maxY - targetHeight,
-            width: targetWidth,
-            height: targetHeight
-        )
-
-        notchWin.setFrame(targetFrame, display: true, animate: false)
-        
+        if expanded {
+            collapseWorkItem?.cancel()
+            collapseWorkItem = nil
+            
+            let targetFrame = NSRect(
+                x: screenFrame.midX - 560 / 2.0,
+                y: screenFrame.maxY - 260,
+                width: 560,
+                height: 260
+            )
+            notchWin.setFrame(targetFrame, display: true, animate: false)
+        } else {
+            collapseWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [weak self, weak notchWin] in
+                guard let self = self, let notchWin = notchWin, !self.isNotchExpanded else { return }
+                
+                let screen = self.window?.screen ?? notchWin.screen ?? NSScreen.main ?? NSScreen.screens.first
+                let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+                let collapsedFrame = NSRect(
+                    x: screenFrame.midX - 172 / 2.0,
+                    y: screenFrame.maxY - 32,
+                    width: 172,
+                    height: 32
+                )
+                notchWin.setFrame(collapsedFrame, display: true, animate: false)
+            }
+            collapseWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38, execute: workItem)
+        }
     }
  
     @objc private func applyTheme() {
@@ -394,7 +416,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 }
 
-// Custom Main Entry Point
-let delegate = AppDelegate()
-NSApplication.shared.delegate = delegate
-_ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+func startCli() {
+    Task { @MainActor in
+        let viewModel = PlayerViewModel()
+        let app = TerminalPlayerApp(viewModel: viewModel)
+        app.run()
+    }
+    RunLoop.main.run()
+}
+
+if CommandLine.arguments.contains("--cli") || CommandLine.arguments.contains("-c") {
+    startCli()
+} else {
+    let delegate = AppDelegate()
+    NSApplication.shared.delegate = delegate
+    _ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+}

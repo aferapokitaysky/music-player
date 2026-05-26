@@ -67,6 +67,10 @@ if [ $? -eq 0 ]; then
 </plist>
 EOF
     
+    # Codesign the app bundle ad-hoc
+    echo -e "\033[0;33mCodesigning the app bundle...\033[0m"
+    codesign --force --deep --sign - "$APP_NAME"
+    
     echo -e "\033[0;36m  App bundle created: ./$APP_NAME\033[0m"
     echo -e "\033[0;36m  You can now move this to your Applications folder!\033[0m"
     echo -e "\033[1;32m====================================================\033[0m"

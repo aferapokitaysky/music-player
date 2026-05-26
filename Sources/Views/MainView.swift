@@ -83,17 +83,17 @@ struct MainView: View {
             }
 
             // Brand
-            HStack(spacing: 10) {
-                AestheticLogoView(size: 44, color: palette.textPrimary)
-                VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                AestheticLogoView(size: 56, color: palette.textPrimary)
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Aferapokitaysky")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
                     Text("Player · Pro")
-                        .font(.system(size: 8, design: .monospaced))
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(palette.textTertiary)
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
 
             // Library header with Create Playlist button
             HStack(spacing: 0) {
@@ -882,7 +882,7 @@ struct AlbumArtView: View {
         let dynamicScale = 1.0 + (isPlaying ? intensity * 0.08 : 0.0)
         let dynamicBlur = 22 + (isPlaying ? CGFloat(intensity * 18.0) : 0.0)
         let dynamicOpacity = isPlaying ? (0.40 + 0.25 * artGlowPhase + intensity * 0.35) : 0.12
-        let artSize: CGFloat = 160
+        let artSize: CGFloat = 220
 
         return ZStack {
             // Ambient glowing back shadow matching the album art colors

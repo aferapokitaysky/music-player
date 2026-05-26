@@ -12,6 +12,14 @@ struct Track: Identifiable, Equatable, Hashable, Codable {
     let audioUrl: String
     let duration: Double // in seconds
 
+    static func == (lhs: Track, rhs: Track) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
     // Apple Music style ambient colors generated dynamically or by brand
     var ambientColors: [Color] {
         if id.hasPrefix("spotify") {
@@ -149,7 +157,11 @@ class PlayerViewModel: ObservableObject {
     private var playerFinishedObserver: Any?
     private var visualizerTimer: Timer?
     private var beatCounter = 0.0
+    private var hasPrintedTerminalVisualizer = false
+    private var terminalTickCounter = 0
     private static var scClientId: String? = nil
+    var isTuiActive = false
+    static var isStaticTuiActive = false
     
     init() {
         // Restore OAuth from Keychain if present
@@ -167,9 +179,47 @@ class PlayerViewModel: ObservableObject {
         if cached.count != loadedAlbums.count {
             LibraryStore.save(cached)
         }
-        self.selectedAlbumId = self.albums.first?.id
-        self.playingAlbumId = self.selectedAlbumId
-        self.currentTrack = self.albums.first?.tracks.first
+        if let lastTrackId = UserDefaults.standard.string(forKey: "lastPlayingTrackId") {
+            var foundTrack: Track? = nil
+            var foundAlbum: Album? = nil
+            
+            for album in self.albums {
+                if let track = album.tracks.first(where: { $0.id == lastTrackId }) {
+                    foundTrack = track
+                    foundAlbum = album
+                    break
+                }
+            }
+            
+            if let track = foundTrack, let album = foundAlbum {
+                self.selectedAlbumId = album.id
+                self.playingAlbumId = album.id
+                self.currentTrack = track
+                
+                let lastTime = UserDefaults.standard.double(forKey: "lastPlayingTime")
+                DispatchQueue.main.async { [weak self] in
+                    self?.loadTrack(track, in: album, seekTo: lastTime)
+                }
+            } else {
+                self.selectedAlbumId = self.albums.first?.id
+                self.playingAlbumId = self.selectedAlbumId
+                self.currentTrack = self.albums.first?.tracks.first
+                if let firstAlbum = self.albums.first, let firstTrack = firstAlbum.tracks.first {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.loadTrack(firstTrack, in: firstAlbum, seekTo: 0.0)
+                    }
+                }
+            }
+        } else {
+            self.selectedAlbumId = self.albums.first?.id
+            self.playingAlbumId = self.selectedAlbumId
+            self.currentTrack = self.albums.first?.tracks.first
+            if let firstAlbum = self.albums.first, let firstTrack = firstAlbum.tracks.first {
+                DispatchQueue.main.async { [weak self] in
+                    self?.loadTrack(firstTrack, in: firstAlbum, seekTo: 0.0)
+                }
+            }
+        }
         self.searchTargetPlaylistId = self.localPlaylists.first?.id
 
         setupAudioSession()
@@ -397,6 +447,7 @@ class PlayerViewModel: ObservableObject {
             Task { @MainActor in
                 guard self.isPlaying else { return }
                 self.currentTime = time.seconds
+                UserDefaults.standard.set(time.seconds, forKey: "lastPlayingTime")
             }
         }
     }
@@ -407,7 +458,9 @@ class PlayerViewModel: ObservableObject {
         // Anchor the playback queue to whatever album the user clicked from
         if let album = album {
             playingAlbumId = album.id
-        } else if let containing = albums.first(where: { $0.tracks.contains(track) }) {
+        } else if playingAlbumId != nil && playlist.contains(where: { $0.id == track.id }) {
+            // Already playing an album/playlist that contains this track, keep playing it!
+        } else if let containing = albums.first(where: { $0.tracks.contains(where: { $0.id == track.id }) }) {
             playingAlbumId = containing.id
         }
 
@@ -415,6 +468,12 @@ class PlayerViewModel: ObservableObject {
         currentAmbientColors = track.ambientColors
         currentTime = 0.0
         isPlaying = true // immediately indicate playing state to update visualizers/UI
+
+        UserDefaults.standard.set(track.id, forKey: "lastPlayingTrackId")
+        if let albumId = playingAlbumId {
+            UserDefaults.standard.set(albumId, forKey: "lastPlayingAlbumId")
+        }
+        UserDefaults.standard.set(0.0, forKey: "lastPlayingTime")
 
         Task {
             let activeTrack: Track
@@ -438,6 +497,50 @@ class PlayerViewModel: ObservableObject {
             self.player.volume = currentVol
             
             self.player.play()
+            self.updateNowPlayingInfo()
+        }
+    }
+
+    func loadTrack(_ track: Track, in album: Album? = nil, seekTo time: Double = 0.0) {
+        if let album = album {
+            playingAlbumId = album.id
+        } else if playingAlbumId != nil && playlist.contains(where: { $0.id == track.id }) {
+            // Already playing
+        } else if let containing = albums.first(where: { $0.tracks.contains(where: { $0.id == track.id }) }) {
+            playingAlbumId = containing.id
+        }
+
+        currentTrack = track
+        currentAmbientColors = track.ambientColors
+        currentTime = time
+        isPlaying = false // pre-loaded, but paused
+
+        UserDefaults.standard.set(track.id, forKey: "lastPlayingTrackId")
+        if let albumId = playingAlbumId {
+            UserDefaults.standard.set(albumId, forKey: "lastPlayingAlbumId")
+        }
+
+        Task {
+            let activeTrack: Track
+            if track.id.hasPrefix("sc_") {
+                activeTrack = await refreshSoundCloudTrackUrl(track)
+            } else {
+                activeTrack = track
+            }
+            
+            guard self.currentTrack?.id == track.id else { return }
+            
+            guard let url = URL(string: activeTrack.audioUrl) else { return }
+            
+            let currentVol = self.player.volume
+            let playerItem = AVPlayerItem(url: url)
+            self.player.replaceCurrentItem(with: playerItem)
+            self.player.volume = currentVol
+            
+            if time > 0 {
+                let targetTime = CMTime(seconds: time, preferredTimescale: 1000)
+                self.player.seek(to: targetTime) { _ in }
+            }
             self.updateNowPlayingInfo()
         }
     }
@@ -1113,9 +1216,10 @@ class PlayerViewModel: ObservableObject {
     // MARK: - SoundCloud helpers
 
     private static func log(_ msg: String) {
+        guard !isStaticTuiActive else { return }
         // Goes to stdout/stderr so the user can see it when running ./AestheticPlayer in a terminal
         FileHandle.standardError.write(Data("[SC] \(msg)\n".utf8))
-    }
+     }
 
     private static func fetchData(url: URL, oauth: String? = nil) async throws -> Data {
         var req = URLRequest(url: url)
@@ -1403,6 +1507,7 @@ class PlayerViewModel: ObservableObject {
             }
             visualizerBars = tempBars
             if allNearZero {
+                printTerminalVisualizer(force: true)
                 return // Avoid redundant calculations when fully decayed
             }
         } else {
@@ -1482,6 +1587,66 @@ class PlayerViewModel: ObservableObject {
             }
             visualizerBars = tempBars
         }
+        printTerminalVisualizer()
+    }
+
+    private func printTerminalVisualizer(force: Bool = false) {
+        guard !isTuiActive else { return }
+        terminalTickCounter += 1
+        guard force || (terminalTickCounter % 3 == 0) else { return }
+        
+        let height = 8
+        let barsCount = visualizerBars.count
+        
+        var lines: [String] = []
+        
+        lines.append("") // top padding
+        
+        for r in (0..<height).reversed() {
+            var rowStr = "  "
+            let threshold = Double(r) / Double(height)
+            
+            for col in 0..<barsCount {
+                let val = visualizerBars[col]
+                let char: String
+                if val >= threshold + 0.05 {
+                    char = "█"
+                } else if val >= threshold {
+                    char = "▄"
+                } else {
+                    char = " "
+                }
+                
+                let colorCode: String
+                if col < 9 {
+                    colorCode = "\u{001B}[38;5;45m" // cyan
+                } else if col < 18 {
+                    colorCode = "\u{001B}[38;5;99m" // indigo/purple
+                } else {
+                    colorCode = "\u{001B}[38;5;200m" // magenta/pink
+                }
+                rowStr += colorCode + char
+            }
+            rowStr += "\u{001B}[0m"
+            lines.append(rowStr)
+        }
+        lines.append("") // bottom padding
+        
+        var output = ""
+        let totalLines = lines.count
+        
+        if hasPrintedTerminalVisualizer {
+            output += "\u{001B}[\(totalLines)A"
+        } else {
+            hasPrintedTerminalVisualizer = true
+        }
+        
+        for line in lines {
+            output += line + "\u{001B}[K\n"
+        }
+        
+        print(output, terminator: "")
+        fflush(stdout)
     }
 }
 

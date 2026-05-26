@@ -14,7 +14,7 @@ struct NotchMiniPlayerView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            ZStack {
                 if isHovered {
                     expandedContent
                         .transition(.asymmetric(
@@ -23,12 +23,13 @@ struct NotchMiniPlayerView: View {
                         ))
                 } else {
                     collapsedContent
+                        .transition(.opacity)
                 }
             }
             .padding(.top, isHovered ? 36 : 0) // Safe 36pt top padding to clear MacBook Air/Pro physical notch bezels
             .padding(.horizontal, isHovered ? 16 : 8)
-            // Expanded size is 500x156 (without volume slider) or 500x196 (with volume slider), fitting perfectly below the notch area
-            .frame(width: isHovered ? 500 : 172, height: isHovered ? (isVolumeExpanded ? 196 : 156) : 32)
+            // Expanded size is 500x180 (without volume slider) or 500x220 (with volume slider), fitting perfectly below the notch area
+            .frame(width: isHovered ? 500 : 172, height: isHovered ? (isVolumeExpanded ? 220 : 180) : 32)
             .background(
                 ZStack {
                     VisualEffectView(
@@ -109,7 +110,7 @@ struct NotchMiniPlayerView: View {
     private var collapsedContent: some View {
         HStack {
             Spacer()
-            AestheticLogoView(size: 16, color: .white)
+            AestheticLogoView(size: 24, color: .white)
             Spacer()
         }
     }
@@ -119,19 +120,19 @@ struct NotchMiniPlayerView: View {
         VStack(spacing: 8) {
             // Brand Header Row
             HStack(spacing: 6) {
-                AestheticLogoView(size: 11, color: palette.textPrimary)
+                AestheticLogoView(size: 18, color: palette.textPrimary)
                 Text("Aferapokitaysky")
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .foregroundColor(palette.textPrimary)
                 Spacer()
                 if viewModel.isShuffle {
                     Image(systemName: "shuffle")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(palette.accent)
                 }
                 if viewModel.isRepeat {
                     Image(systemName: "repeat")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(palette.accentSecondary)
                 }
             }
@@ -142,7 +143,7 @@ struct NotchMiniPlayerView: View {
             HStack(spacing: 12) {
                 // Square Album Art with Rounded Corners
                 albumArtCover
-                    .frame(width: 54, height: 54)
+                    .frame(width: 64, height: 64)
                 
                 // Track details
                 VStack(alignment: .leading, spacing: 1) {
@@ -317,10 +318,10 @@ struct NotchMiniPlayerView: View {
     // MARK: - Square Album Art Cover (Specular gloss overlay)
     private var albumArtCover: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(palette.inset)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(palette.strokeStrong, lineWidth: 1)
                 )
                 
@@ -336,13 +337,13 @@ struct NotchMiniPlayerView: View {
                         ZStack {
                             LinearGradient(colors: [palette.accent.opacity(0.35), palette.accentSecondary.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing)
                             Image(systemName: track.albumArtUrl ?? "music.note")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(palette.textPrimary)
                         }
                     }
                 }
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 
                 // Specular gloss reflection overlay matching main UI
                 LinearGradient(
@@ -350,8 +351,8 @@ struct NotchMiniPlayerView: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .blendMode(.overlay)
                 .allowsHitTesting(false)
             }
