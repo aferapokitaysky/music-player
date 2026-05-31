@@ -44,7 +44,9 @@ aesthetic-player/
    ```
 3. Launch the compiled executable:
    ```bash
-   ./Aferapokitaysky
+   open ./Aferapokitaysky.app
+   # or run the terminal UI:
+   ./Aferapokitaysky.app/Contents/MacOS/Aferapokitaysky --cli
    ```
 
 *(Note: During the first launch, macOS may request Developer Tools Access or Keychain permissions depending on your local Git config and security settings).*
@@ -95,7 +97,9 @@ aesthetic-player/
    ```
 3. Запустите готовый исполняемый файл:
    ```bash
-   ./Aferapokitaysky
+   open ./Aferapokitaysky.app
+   # или терминальный режим:
+   ./Aferapokitaysky.app/Contents/MacOS/Aferapokitaysky --cli
    ```
 
 *(Примечание: При первом запуске macOS может однократно запросить доступ к инструментам разработчика (Developer Tools Access) в целях безопасности).*

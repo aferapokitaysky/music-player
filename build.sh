@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # --- Aesthetic macOS Media Player Builder ---
 # Compiles Swift files into a standalone native macOS executable.
@@ -22,29 +23,33 @@ swiftc \
     $(find Sources -name "*.swift") \
     -o Aferapokitaysky
 
-if [ $? -eq 0 ]; then
-    echo -e "\033[1;32m====================================================\033[0m"
-    echo -e "\033[1;32m  BUILD SUCCESSFUL! \033[0m"
-    
-    # Create the macOS .app bundle structure
-    APP_NAME="Aferapokitaysky.app"
-    mkdir -p "$APP_NAME/Contents/MacOS"
-    mkdir -p "$APP_NAME/Contents/Resources"
-    
-    mv Aferapokitaysky "$APP_NAME/Contents/MacOS/"
-    
-    # Copy icon if it exists
-    if [ -f "AppIcon.icns" ]; then
-        cp AppIcon.icns "$APP_NAME/Contents/Resources/"
-    fi
-    
-    # Copy logo PNG if it exists
-    if [ -f "logo.png" ]; then
-        cp logo.png "$APP_NAME/Contents/Resources/logo.png"
-    fi
-    
-    # Generate a basic Info.plist for the app bundle
-    cat > "$APP_NAME/Contents/Info.plist" << EOF
+echo -e "\033[1;32m====================================================\033[0m"
+echo -e "\033[1;32m  BUILD SUCCESSFUL! \033[0m"
+
+# Create a clean macOS .app bundle structure
+APP_NAME="Aferapokitaysky.app"
+rm -rf "$APP_NAME"
+mkdir -p "$APP_NAME/Contents/MacOS"
+mkdir -p "$APP_NAME/Contents/Resources"
+
+mv Aferapokitaysky "$APP_NAME/Contents/MacOS/"
+
+# Copy app-level assets
+if [ -f "AppIcon.icns" ]; then
+    cp AppIcon.icns "$APP_NAME/Contents/Resources/"
+fi
+
+if [ -f "logo.png" ]; then
+    cp logo.png "$APP_NAME/Contents/Resources/logo.png"
+fi
+
+# Copy bundled SwiftUI image resources used by service logos.
+if [ -d "Sources/Resources" ]; then
+    cp -R Sources/Resources/. "$APP_NAME/Contents/Resources/"
+fi
+
+# Generate Info.plist for the app bundle
+cat > "$APP_NAME/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -66,17 +71,12 @@ if [ $? -eq 0 ]; then
 </dict>
 </plist>
 EOF
-    
-    # Codesign the app bundle ad-hoc
-    echo -e "\033[0;33mCodesigning the app bundle...\033[0m"
-    codesign --force --deep --sign - "$APP_NAME"
-    
-    echo -e "\033[0;36m  App bundle created: ./$APP_NAME\033[0m"
-    echo -e "\033[0;36m  You can now move this to your Applications folder!\033[0m"
-    echo -e "\033[1;32m====================================================\033[0m"
-else
-    echo -e "\033[1;31m====================================================\033[0m"
-    echo -e "\033[1;31m  BUILD FAILED! Please check error output above. \033[0m"
-    echo -e "\033[1;31m====================================================\033[0m"
-    exit 1
-fi
+
+# Codesign the app bundle ad-hoc
+echo -e "\033[0;33mCodesigning the app bundle...\033[0m"
+codesign --force --deep --sign - "$APP_NAME"
+
+echo -e "\033[0;36m  App bundle created: ./$APP_NAME\033[0m"
+echo -e "\033[0;36m  GUI: open ./$APP_NAME\033[0m"
+echo -e "\033[0;36m  CLI: ./$APP_NAME/Contents/MacOS/Aferapokitaysky --cli\033[0m"
+echo -e "\033[1;32m====================================================\033[0m"

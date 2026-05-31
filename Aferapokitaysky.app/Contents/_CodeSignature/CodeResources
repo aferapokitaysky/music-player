@@ -4,9 +4,17 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/49336.png</key>
+		<data>
+		Kx/eMy+IAM+2ov9+ieqwfoSTRWc=
+		</data>
 		<key>Resources/AppIcon.icns</key>
 		<data>
 		m5g96eO3Q5V4tOQamJ0fQdo4SXw=
+		</data>
+		<key>Resources/Spotify_icon.svg.png</key>
+		<data>
+		T5seGCNB1oIAq+ry3TzNweD2/Mg=
 		</data>
 		<key>Resources/logo.png</key>
 		<data>
@@ -15,11 +23,25 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/49336.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			BH3XtfVwVqVStusJKWOoia/3i4++4wQtf6hcnnCogeQ=
+			</data>
+		</dict>
 		<key>Resources/AppIcon.icns</key>
 		<dict>
 			<key>hash2</key>
 			<data>
 			Ma9x6g5/4Bx1gbQktH1joNHiJkNMcK8JMirIoAUT5nw=
+			</data>
+		</dict>
+		<key>Resources/Spotify_icon.svg.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			9HFCJglINpTLnceVcOzq/OR2vs2PRatQY5qG5ukpU/U=
 			</data>
 		</dict>
 		<key>Resources/logo.png</key>

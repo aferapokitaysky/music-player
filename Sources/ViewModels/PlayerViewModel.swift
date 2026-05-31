@@ -3,6 +3,8 @@ import AVFoundation
 import Combine
 import SwiftUI
 import MediaPlayer
+import AppKit
+import UniformTypeIdentifiers
 
 struct Track: Identifiable, Equatable, Hashable, Codable {
     let id: String
@@ -98,6 +100,11 @@ class PlayerViewModel: ObservableObject {
             UserDefaults.standard.set(uiOpacity, forKey: "uiOpacity")
         }
     }
+    @Published var visualEffectsEnabled: Bool = (UserDefaults.standard.object(forKey: "visualEffectsEnabled") as? Bool) ?? true {
+        didSet {
+            UserDefaults.standard.set(visualEffectsEnabled, forKey: "visualEffectsEnabled")
+        }
+    }
     @Published var currentAmbientColors: [Color] = []
 
     // Services / Inputs
@@ -162,6 +169,12 @@ class PlayerViewModel: ObservableObject {
     private static var scClientId: String? = nil
     var isTuiActive = false
     static var isStaticTuiActive = false
+    private var loginWindowController: LoginWebWindowController?
+    private var normalizedSpotifyToken: String {
+        spotifyToken
+            .replacingOccurrences(of: "Bearer ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     
     init() {
         // Restore OAuth from Keychain if present
@@ -286,6 +299,7 @@ class PlayerViewModel: ObservableObject {
     }
 
     func deleteAlbumLocally(_ albumId: String) {
+        let wasPlayingDeletedAlbum = playingAlbumId == albumId
         albums.removeAll(where: { $0.id == albumId })
         if selectedAlbumId == albumId {
             selectedAlbumId = albums.first?.id
@@ -293,10 +307,15 @@ class PlayerViewModel: ObservableObject {
         if searchTargetPlaylistId == albumId {
             searchTargetPlaylistId = localPlaylists.first?.id
         }
-        if playingAlbumId == albumId {
+        if wasPlayingDeletedAlbum {
             playingAlbumId = selectedAlbumId
-            if let track = currentTrack, !playlist.contains(track) {
-                currentTrack = playlist.first
+            if let nextAlbum = selectedAlbum, let nextTrack = nextAlbum.tracks.first {
+                loadTrack(nextTrack, in: nextAlbum, seekTo: 0.0)
+            } else {
+                player.pause()
+                currentTrack = nil
+                currentTime = 0.0
+                isPlaying = false
             }
         }
         persistLibrary()
@@ -330,6 +349,131 @@ class PlayerViewModel: ObservableObject {
         persistLibrary()
         return album
     }
+
+    func importLocalAudioFiles() {
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Импорт локальных аудиофайлов"
+        openPanel.allowedContentTypes = [
+            UTType.mp3,
+            UTType.mpeg4Audio, // for m4a
+            UTType.wav, // for wav
+            UTType(tag: "aac", tagClass: .filenameExtension, conformingTo: nil),
+            UTType(tag: "flac", tagClass: .filenameExtension, conformingTo: nil)
+        ].compactMap { $0 }
+        openPanel.allowsMultipleSelection = true
+        openPanel.canChooseDirectories = false
+        openPanel.canChooseFiles = true
+        
+        if openPanel.runModal() == .OK {
+            let selectedURLs = openPanel.urls
+            guard !selectedURLs.isEmpty else { return }
+            
+            self.searchStatus = "Импорт \(selectedURLs.count) файлов..."
+            
+            Task {
+                var newTracks: [Track] = []
+                for url in selectedURLs {
+                    let asset = AVURLAsset(url: url)
+                    
+                    let (title, artist, duration) = await self.loadMetadata(for: asset, defaultTitle: url.deletingPathExtension().lastPathComponent)
+                    
+                    let trackId = "local_\(abs(url.path.hashValue))"
+                    
+                    let track = Track(
+                        id: trackId,
+                        title: title,
+                        artist: artist,
+                        albumArtUrl: "music.note",
+                        audioUrl: url.absoluteString,
+                        duration: duration
+                    )
+                    newTracks.append(track)
+                }
+                
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    
+                    var playlistIndex = self.albums.firstIndex(where: { $0.id == "local_files" })
+                    if playlistIndex == nil {
+                        let newAlbum = Album(
+                            id: "local_files",
+                            name: "Локальные файлы",
+                            kind: .custom,
+                            artworkUrl: "music.note",
+                            tracks: []
+                        )
+                        self.albums.append(newAlbum)
+                        playlistIndex = self.albums.count - 1
+                    }
+                    
+                    if let idx = playlistIndex {
+                        var addedCount = 0
+                        for track in newTracks {
+                            if !self.albums[idx].tracks.contains(where: { $0.id == track.id }) {
+                                self.albums[idx].tracks.append(track)
+                                addedCount += 1
+                            }
+                        }
+                        
+                        self.selectedAlbumId = "local_files"
+                        self.searchStatus = "Импортировано треков: \(addedCount)"
+                        
+                        if self.searchTargetPlaylistId == nil {
+                            self.searchTargetPlaylistId = "local_files"
+                        }
+                    }
+                    
+                    self.persistLibrary()
+                }
+            }
+        }
+    }
+
+    private func loadMetadata(for asset: AVAsset, defaultTitle: String) async -> (title: String, artist: String, duration: Double) {
+        if #available(macOS 13.0, *) {
+            do {
+                let commonMetadata = try await asset.load(.commonMetadata)
+                var title = defaultTitle
+                var artist = "Неизвестный исполнитель"
+                
+                if let titleItem = AVMetadataItem.metadataItems(from: commonMetadata, withKey: AVMetadataKey.commonKeyTitle, keySpace: AVMetadataKeySpace.common).first {
+                    if let titleVal = try? await titleItem.load(.stringValue), !titleVal.trimmingCharacters(in: .whitespaces).isEmpty {
+                        title = titleVal
+                    }
+                }
+                
+                if let artistItem = AVMetadataItem.metadataItems(from: commonMetadata, withKey: AVMetadataKey.commonKeyArtist, keySpace: AVMetadataKeySpace.common).first {
+                    if let artistVal = try? await artistItem.load(.stringValue), !artistVal.trimmingCharacters(in: .whitespaces).isEmpty {
+                        artist = artistVal
+                    }
+                }
+                
+                let duration = try await asset.load(.duration).seconds
+                return (title, artist, duration.isNaN || duration <= 0 ? 180.0 : duration)
+            } catch {
+                // If async load fails, fall back to KVC below
+            }
+        }
+        
+        // Fallback for macOS 12 using KVC to avoid compiler deprecation warnings
+        var title = defaultTitle
+        var artist = "Неизвестный исполнитель"
+        
+        let commonMetadata = asset.value(forKey: "commonMetadata") as? [AVMetadataItem] ?? []
+        if let titleItem = AVMetadataItem.metadataItems(from: commonMetadata, withKey: AVMetadataKey.commonKeyTitle, keySpace: AVMetadataKeySpace.common).first,
+           let titleVal = titleItem.value(forKey: "stringValue") as? String, !titleVal.trimmingCharacters(in: .whitespaces).isEmpty {
+            title = titleVal
+        }
+        if let artistItem = AVMetadataItem.metadataItems(from: commonMetadata, withKey: AVMetadataKey.commonKeyArtist, keySpace: AVMetadataKeySpace.common).first,
+           let artistVal = artistItem.value(forKey: "stringValue") as? String, !artistVal.trimmingCharacters(in: .whitespaces).isEmpty {
+            artist = artistVal
+        }
+        
+        let durationCMTime = asset.value(forKey: "duration") as? CMTime ?? .zero
+        let duration = durationCMTime.seconds
+        return (title, artist, duration.isNaN || duration <= 0 ? 180.0 : duration)
+    }
+
 
     func addTrackToSearchTargetPlaylist(_ track: Track) {
         let targetId: String
@@ -546,6 +690,18 @@ class PlayerViewModel: ObservableObject {
     }
     
     func play() {
+        if player.currentItem == nil, let track = currentTrack {
+            playTrack(track, in: selectedAlbum)
+            return
+        }
+
+        guard currentTrack != nil else {
+            if let album = selectedAlbum, let track = album.tracks.first {
+                playTrack(track, in: album)
+            }
+            return
+        }
+
         player.play()
         isPlaying = true
         updateNowPlayingInfo()
@@ -579,7 +735,12 @@ class PlayerViewModel: ObservableObject {
     }
     
     func nextTrack() {
-        guard let current = currentTrack, let index = playlist.firstIndex(of: current) else { return }
+        let queue = playlist
+        guard !queue.isEmpty else { return }
+        guard let current = currentTrack, let index = queue.firstIndex(of: current) else {
+            playTrack(queue[0])
+            return
+        }
         
         if isRepeat {
             seek(to: 0)
@@ -589,19 +750,32 @@ class PlayerViewModel: ObservableObject {
         
         let nextIndex: Int
         if isShuffle {
-            nextIndex = Int.random(in: 0..<playlist.count)
+            if queue.count == 1 {
+                nextIndex = 0
+            } else {
+                var candidate = index
+                while candidate == index {
+                    candidate = Int.random(in: 0..<queue.count)
+                }
+                nextIndex = candidate
+            }
         } else {
-            nextIndex = (index + 1) % playlist.count
+            nextIndex = (index + 1) % queue.count
         }
         
-        playTrack(playlist[nextIndex])
+        playTrack(queue[nextIndex])
     }
     
     func prevTrack() {
-        guard let current = currentTrack, let index = playlist.firstIndex(of: current) else { return }
+        let queue = playlist
+        guard !queue.isEmpty else { return }
+        guard let current = currentTrack, let index = queue.firstIndex(of: current) else {
+            playTrack(queue[0])
+            return
+        }
         
-        let prevIndex = (index - 1 + playlist.count) % playlist.count
-        playTrack(playlist[prevIndex])
+        let prevIndex = (index - 1 + queue.count) % queue.count
+        playTrack(queue[prevIndex])
     }
     
     func toggleShuffle() {
@@ -614,8 +788,72 @@ class PlayerViewModel: ObservableObject {
     
     // MARK: - Spotify & SoundCloud Connections
     
+    func startSpotifyWebLogin() {
+        let controller = LoginWebWindowController(isSpotify: true)
+        controller.onSpotifyTokenObtained = { [weak self] token in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.spotifyToken = token
+                Keychain.save(token, account: "spotify_token")
+                self.connectionStatus = "Токен Spotify получен! Подключение..."
+                await self.connectSpotify()
+            }
+        }
+        controller.showWindow(nil)
+        self.loginWindowController = controller
+    }
+
+    func startSoundCloudWebLogin() {
+        let controller = LoginWebWindowController(isSpotify: false)
+        controller.onSoundCloudTokenObtained = { [weak self] token in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.soundCloudOAuth = token
+                self.persistOAuth()
+                self.connectionStatus = "Токен SoundCloud получен! Автоматический вход..."
+                await self.connectSoundCloud()
+            }
+        }
+        controller.showWindow(nil)
+        self.loginWindowController = controller
+    }
+
+    func disconnectSpotify() {
+        spotifyToken = ""
+        Keychain.remove(account: "spotify_token")
+        self.albums.removeAll { $0.id.hasPrefix("spotify_") }
+        if selectedAlbumId?.hasPrefix("spotify_") == true {
+            selectedAlbumId = nil
+        }
+        if playingAlbumId?.hasPrefix("spotify_") == true {
+            player.pause()
+            isPlaying = false
+            currentTrack = nil
+        }
+        persistLibrary()
+        connectionStatus = "Spotify отключен"
+    }
+
+    func disconnectSoundCloud() {
+        soundCloudOAuth = ""
+        soundCloudUrl = ""
+        Keychain.remove(account: "soundcloud_oauth")
+        self.albums.removeAll { $0.id.hasPrefix("soundcloud_") }
+        if selectedAlbumId?.hasPrefix("soundcloud_") == true {
+            selectedAlbumId = nil
+        }
+        if playingAlbumId?.hasPrefix("soundcloud_") == true {
+            player.pause()
+            isPlaying = false
+            currentTrack = nil
+        }
+        persistLibrary()
+        connectionStatus = "SoundCloud отключен"
+    }
+
     func connectSpotify() async {
-        guard !spotifyToken.isEmpty else {
+        let token = normalizedSpotifyToken
+        guard !token.isEmpty else {
             connectionStatus = "Введите токен!"
             return
         }
@@ -624,7 +862,7 @@ class PlayerViewModel: ObservableObject {
         connectionStatus = "Подключение к Spotify..."
         
         var request = URLRequest(url: URL(string: "https://api.spotify.com/v1/me/playlists?limit=10")!)
-        request.setValue("Bearer \(spotifyToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -646,7 +884,7 @@ class PlayerViewModel: ObservableObject {
                        let tracksUrl = URL(string: tracksUrlStr) {
                         
                         var tracksRequest = URLRequest(url: tracksUrl)
-                        tracksRequest.setValue("Bearer \(spotifyToken)", forHTTPHeaderField: "Authorization")
+                        tracksRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                         
                         let (tracksData, _) = try await URLSession.shared.data(for: tracksRequest)
                         if let tracksJson = try? JSONSerialization.jsonObject(with: tracksData) as? [String: Any],
@@ -700,8 +938,8 @@ class PlayerViewModel: ObservableObject {
                         self.playingAlbumId = album.id
                         self.currentTrack = fetchedTracks.first
                         self.persistLibrary()
-                        let trimmed = self.spotifyToken.trimmingCharacters(in: .whitespacesAndNewlines)
-                        Keychain.save(trimmed, account: "spotify_token")
+                        self.spotifyToken = token
+                        Keychain.save(token, account: "spotify_token")
                         self.connectionStatus = "Успешно подключен Spotify! \(fetchedTracks.count) превью-треков."
                     } else {
                         self.connectionStatus = "Плейлисты пустые или нет превью-треков."
@@ -718,8 +956,52 @@ class PlayerViewModel: ObservableObject {
     }
     
     func connectSoundCloud() async {
-        // Tolerant URL normalization
         var raw = soundCloudUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let oauth = soundCloudOAuth.trimmingCharacters(in: .whitespacesAndNewlines)
+        let oauthOpt: String? = oauth.isEmpty ? nil : oauth
+
+        Self.log("=== connectSoundCloud start ===")
+        
+        isConnecting = true
+        
+        if raw.isEmpty {
+            if let token = oauthOpt {
+                connectionStatus = "Определение профиля SoundCloud..."
+                do {
+                    let homeHTML = try await Self.fetchString(url: URL(string: "https://soundcloud.com")!)
+                    let clientId = try await Self.extractClientId(fromHTML: homeHTML)
+                    
+                    guard var meComps = URLComponents(string: "https://api-v2.soundcloud.com/me") else {
+                        throw NSError(domain: "SC", code: -1)
+                    }
+                    meComps.queryItems = [URLQueryItem(name: "client_id", value: clientId)]
+                    guard let meURL = meComps.url else { throw NSError(domain: "SC", code: -2) }
+                    
+                    let meData = try await Self.fetchData(url: meURL, oauth: token)
+                    if let meJson = try? JSONSerialization.jsonObject(with: meData) as? [String: Any],
+                       let permalinkUrl = meJson["permalink_url"] as? String {
+                        let resolvedUrl = permalinkUrl
+                        await MainActor.run {
+                            self.soundCloudUrl = resolvedUrl
+                            UserDefaults.standard.set(resolvedUrl, forKey: "soundCloudUrl")
+                        }
+                        raw = resolvedUrl
+                        Self.log("Automatically resolved SoundCloud user URL: \(raw)")
+                    } else {
+                        throw NSError(domain: "SC", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to parse profile JSON"])
+                    }
+                } catch {
+                    connectionStatus = "Не удалось определить профиль: \(error.localizedDescription)"
+                    isConnecting = false
+                    return
+                }
+            } else {
+                connectionStatus = "Пожалуйста, привяжите SoundCloud через Web"
+                isConnecting = false
+                return
+            }
+        }
+
         // Strip wrapping quotes
         raw = raw.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
         // Add scheme if missing
@@ -731,21 +1013,17 @@ class PlayerViewModel: ObservableObject {
             }
         }
 
-        Self.log("=== connectSoundCloud start ===")
         Self.log("input URL: \(raw)")
 
-        guard !raw.isEmpty, let pageURL = URL(string: raw),
+        guard let pageURL = URL(string: raw),
               pageURL.host?.contains("soundcloud.com") == true else {
             connectionStatus = "Некорректная ссылка SoundCloud"
             Self.log("invalid URL after normalization: \(raw)")
+            isConnecting = false
             return
         }
 
-        isConnecting = true
         connectionStatus = "Загрузка страницы SoundCloud..."
-
-        let oauth = soundCloudOAuth.trimmingCharacters(in: .whitespacesAndNewlines)
-        let oauthOpt: String? = oauth.isEmpty ? nil : oauth
         Self.log("oauth provided: \(oauthOpt != nil)  path: \(pageURL.path)")
 
         do {
@@ -827,7 +1105,6 @@ class PlayerViewModel: ObservableObject {
                     }
 
                 } else {
-                    // Bare profile — uploads, likes, all playlists (each as its own album)
                     let uploadEntries = try await Self.fetchCollection(
                         urlString: "https://api-v2.soundcloud.com/users/\(uid)/tracks",
                         clientId: clientId, oauth: oauthOpt
@@ -858,6 +1135,52 @@ class PlayerViewModel: ObservableObject {
                                                kind: .likes,
                                                artworkUrl: likes.first?.albumArtUrl,
                                                tracks: likes))
+                    }
+
+                    // --- RECOMMENDATIONS / CHARTS LOADER ---
+                    var recommendationTracks: [Track] = []
+                    if oauthOpt != nil {
+                        do {
+                            Self.log("Fetching personalized recommendations for user \(uid)...")
+                            let recJsons = try await Self.fetchCollection(
+                                urlString: "https://api-v2.soundcloud.com/users/\(uid)/track_recommendations",
+                                clientId: clientId, oauth: oauthOpt
+                            )
+                            let recs = await Self.buildTracks(from: Self.flattenTracks(recJsons),
+                                                               clientId: clientId, oauth: oauthOpt) { idx, total in
+                                await MainActor.run { self.connectionStatus = "Рекомендации \(idx)/\(total)" }
+                            }
+                            recommendationTracks = recs
+                        } catch {
+                            Self.log("Failed to load personalized recommendations: \(error)")
+                        }
+                    }
+
+                    if recommendationTracks.isEmpty {
+                        do {
+                            Self.log("Personalized recommendations unavailable or empty. Fetching global charts...")
+                            let chartsJsons = try await Self.fetchCollection(
+                                urlString: "https://api-v2.soundcloud.com/charts?kind=top&genre=soundcloud%3Agenres%3Aall-music",
+                                clientId: clientId, oauth: oauthOpt
+                            )
+                            let charts = await Self.buildTracks(from: Self.flattenTracks(chartsJsons),
+                                                                 clientId: clientId, oauth: oauthOpt) { idx, total in
+                                await MainActor.run { self.connectionStatus = "Топ-Чарты \(idx)/\(total)" }
+                            }
+                            recommendationTracks = charts
+                        } catch {
+                            Self.log("Failed to load trending charts: \(error)")
+                        }
+                    }
+
+                    if !recommendationTracks.isEmpty {
+                        newAlbums.append(Album(
+                            id: "sc_recommendations_\(uid)",
+                            name: oauthOpt != nil ? "⚡ Рекомендации · \(userName)" : "🔥 Топ-Чарт SoundCloud",
+                            kind: .custom,
+                            artworkUrl: recommendationTracks.first?.albumArtUrl,
+                            tracks: recommendationTracks
+                        ))
                     }
 
                     let playlistJsons = try await Self.fetchCollection(
@@ -1069,7 +1392,8 @@ class PlayerViewModel: ObservableObject {
     }
 
     private func searchSpotify() async throws -> [Track] {
-        guard !spotifyToken.isEmpty else {
+        let token = normalizedSpotifyToken
+        guard !token.isEmpty else {
             throw NSError(domain: "Spotify", code: 401, userInfo: [NSLocalizedDescriptionKey: "Введите токен Spotify во вкладке 'Подключения'!"])
         }
 
@@ -1086,7 +1410,7 @@ class PlayerViewModel: ObservableObject {
         guard let url = comps.url else { throw NSError(domain: "Spotify", code: 1) }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(spotifyToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -1146,19 +1470,56 @@ class PlayerViewModel: ObservableObject {
         guard var c = URLComponents(string: urlString) else { return [] }
         c.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
-            URLQueryItem(name: "limit", value: "200")
+            URLQueryItem(name: "limit", value: "200"),
+            URLQueryItem(name: "linked_partitioning", value: "1")
         ]
-        guard let url = c.url else { return [] }
-        let data = try await fetchData(url: url, oauth: oauth)
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let collection = json["collection"] as? [[String: Any]] else { return [] }
-        log("collection from \(urlString) size: \(collection.count)")
-        return collection
+        var nextURL = c.url
+        var allItems: [[String: Any]] = []
+        var pageCount = 0
+
+        while let url = nextURL {
+            if Task.isCancelled { return allItems }
+
+            let data = try await fetchData(url: url, oauth: oauth)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let collection = json["collection"] as? [[String: Any]] else { break }
+
+            allItems.append(contentsOf: collection)
+            pageCount += 1
+
+            guard pageCount < 25,
+                  let nextHref = json["next_href"] as? String,
+                  !nextHref.isEmpty,
+                  var nextComponents = URLComponents(string: nextHref) else {
+                nextURL = nil
+                continue
+            }
+
+            var queryItems = nextComponents.queryItems ?? []
+            if !queryItems.contains(where: { $0.name == "client_id" }) {
+                queryItems.append(URLQueryItem(name: "client_id", value: clientId))
+            }
+            nextComponents.queryItems = queryItems
+            nextURL = nextComponents.url
+        }
+
+        log("collection from \(urlString) size: \(allItems.count), pages: \(pageCount)")
+        return allItems
     }
 
     /// Likes endpoint wraps the actual track in entry["track"]; flatten that out.
     private static func flattenLikes(_ entries: [[String: Any]]) -> [[String: Any]] {
         entries.compactMap { $0["track"] as? [String: Any] }
+    }
+
+    /// Flatten recommendations or charts which can have nested tracks or be clean tracks
+    private static func flattenTracks(_ entries: [[String: Any]]) -> [[String: Any]] {
+        entries.compactMap {
+            if let track = $0["track"] as? [String: Any] {
+                return track
+            }
+            return $0
+        }
     }
 
     /// Build [Track] from a list of raw track JSONs, resolving missing `media` via /tracks/{id}.

@@ -37,6 +37,7 @@ final class TerminalPlayerApp {
     private var inputMode: InputMode = .normal
     private var searchSource: SearchSource = .soundCloud
     private var showOptions = false
+    private var currentTuiScheme: TuiColorScheme = .cyberpunk
     
     private var lastWidth = 0
     private var lastHeight = 0
@@ -312,6 +313,8 @@ final class TerminalPlayerApp {
                 viewModel.isRepeat.toggle()
             case 116, 84: // 't' or 'T' - Theme toggle
                 ThemeManager.shared.toggle()
+            case 103, 71: // 'g' or 'G' - Cycle TUI Visualizer Color Theme
+                cycleTuiScheme()
             case 111, 79: // 'o' or 'O' - Settings/Options view toggle
                 showOptions.toggle()
             case 47: // '/' key - trigger Search
@@ -472,6 +475,14 @@ final class TerminalPlayerApp {
     }
     
     // MARK: - Navigation Control
+    private func cycleTuiScheme() {
+        let allCases = TuiColorScheme.allCases
+        if let idx = allCases.firstIndex(of: currentTuiScheme) {
+            let nextIdx = (idx + 1) % allCases.count
+            currentTuiScheme = allCases[nextIdx]
+        }
+    }
+
     private func cycleFocus() {
         switch focusedPane {
         case .albums: focusedPane = .tracks
@@ -789,7 +800,7 @@ final class TerminalPlayerApp {
         let formattedMeta1 = "\u{001B}[1;38;5;45m" + (lineMeta1.count > width ? String(lineMeta1.prefix(width - 2)) + ".." : lineMeta1) + "\u{001B}[0m"
         lines.append(getLine(content: formattedMeta1, width: width, border: border))
         
-        let lineMeta2 = "  Vol: \(volPercent)% | Shuffle: \(shuff) | Repeat: \(rep)"
+        let lineMeta2 = "  Vol: \(volPercent)% | Shuffle: \(shuff) | Repeat: \(rep) | Spectrum: \(currentTuiScheme.rawValue)"
         let formattedMeta2 = "\u{001B}[38;5;246m" + (lineMeta2.count > width ? String(lineMeta2.prefix(width - 2)) + ".." : lineMeta2) + "\u{001B}[0m"
         lines.append(getLine(content: formattedMeta2, width: width, border: border))
         
@@ -820,11 +831,8 @@ final class TerminalPlayerApp {
             for c in 0..<barCount {
                 let val = bars[c]
                 let char = val >= threshold + 0.1 ? "██" : (val >= threshold ? "▄▄" : "  ")
-                let colorCode: String
                 let progressVal = Double(c) / Double(barCount)
-                if progressVal < 0.35 { colorCode = "\u{001B}[38;5;45m" }
-                else if progressVal < 0.70 { colorCode = "\u{001B}[38;5;99m" }
-                else { colorCode = "\u{001B}[38;5;201m" }
+                let colorCode = currentTuiScheme.color(for: progressVal)
                 rowStr += colorCode + char + "\u{001B}[0m "
             }
             lines.append(getLine(content: rowStr, width: width, border: border))
@@ -933,7 +941,7 @@ final class TerminalPlayerApp {
             let rep = viewModel.isRepeat ? "ON" : "OFF"
             let volPercent = Int(viewModel.volume * 100)
             
-            let line3 = "  Volume: \(volPercent)%  |  Shuffle: \(shuff)  |  Repeat: \(rep)"
+            let line3 = "  Volume: \(volPercent)%  |  Shuffle: \(shuff)  |  Repeat: \(rep)  |  Spectrum: \(currentTuiScheme.rawValue)"
             let padCount3 = max(0, width - line3.count - 4)
             res += "\u{001B}[38;5;99m║\u{001B}[0m\(line3)\(String(repeating: " ", count: padCount3))\u{001B}[38;5;99m║\u{001B}[0m\u{001B}[K\n"
         }
@@ -961,11 +969,8 @@ final class TerminalPlayerApp {
             for c in 0..<barCount {
                 let val = bars[c]
                 let char = val >= threshold + 0.04 ? "██" : (val >= threshold ? "▄▄" : "  ")
-                let colorCode: String
                 let progress = Double(c) / Double(barCount)
-                if progress < 0.35 { colorCode = "\u{001B}[38;5;45m" }
-                else if progress < 0.70 { colorCode = "\u{001B}[38;5;99m" }
-                else { colorCode = "\u{001B}[38;5;201m" }
+                let colorCode = currentTuiScheme.color(for: progress)
                 rowStr += colorCode + char + "\u{001B}[0m "
             }
             res += rowStr + "\u{001B}[K\n"
@@ -1048,7 +1053,7 @@ final class TerminalPlayerApp {
             if case .addToPlaylist = popupState {
                 legend = "  [▲/▼] Выбрать  |  [Enter] Подтвердить  |  [Esc] Назад"
             } else {
-                legend = "  [Tab] Колонки | [▲/▼] Нав | [◀/▶] Seek/Фокус | [Space] Play | [/] Поиск | [C] Создать пл | [A] Добавить тк | [T] Тема | [O] Опции | [Q] Выход"
+                legend = "  [Tab] Колонки | [▲/▼] Нав | [◀/▶] Seek/Фокус | [Space] Play | [/] Поиск | [C] Создать пл | [A] Добавить тк | [T] Тема | [G] Спектр | [O] Опции | [Q] Выход"
             }
         }
         
@@ -1106,5 +1111,38 @@ final class TerminalPlayerApp {
     
     private func getFooter(width: Int, border: String) -> String {
         return border + "└" + String(repeating: "─", count: width) + "┘\u{001B}[0m"
+    }
+}
+
+enum TuiColorScheme: String, CaseIterable {
+    case cyberpunk = "Cyberpunk"
+    case matrix = "Matrix"
+    case inferno = "Inferno"
+    case arctic = "Arctic"
+    case monochrome = "Monochrome"
+    
+    func color(for progressVal: Double) -> String {
+        switch self {
+        case .cyberpunk:
+            if progressVal < 0.35 { return "\u{001B}[38;5;45m" }
+            else if progressVal < 0.70 { return "\u{001B}[38;5;99m" }
+            else { return "\u{001B}[38;5;201m" }
+        case .matrix:
+            if progressVal < 0.35 { return "\u{001B}[38;5;28m" }
+            else if progressVal < 0.70 { return "\u{001B}[38;5;34m" }
+            else { return "\u{001B}[38;5;82m" }
+        case .inferno:
+            if progressVal < 0.35 { return "\u{001B}[38;5;196m" }
+            else if progressVal < 0.70 { return "\u{001B}[38;5;208m" }
+            else { return "\u{001B}[38;5;220m" }
+        case .arctic:
+            if progressVal < 0.35 { return "\u{001B}[38;5;21m" }
+            else if progressVal < 0.70 { return "\u{001B}[38;5;39m" }
+            else { return "\u{001B}[38;5;51m" }
+        case .monochrome:
+            if progressVal < 0.35 { return "\u{001B}[38;5;240m" }
+            else if progressVal < 0.70 { return "\u{001B}[38;5;248m" }
+            else { return "\u{001B}[38;5;255m" }
+        }
     }
 }

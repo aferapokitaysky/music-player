@@ -1,5 +1,11 @@
 # Build artifacts
 AestheticPlayer
+Aferapokitaysky
+AestheticPlayer.app/
+Aferapokitaysky.app/
+*.app/Contents/MacOS/*
+*.app/Contents/_CodeSignature/
+AppIcon.iconset/
 
 # OS files
 .DS_Store
