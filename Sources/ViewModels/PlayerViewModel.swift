@@ -238,6 +238,19 @@ class PlayerViewModel: ObservableObject {
         setupAudioSession()
         setupVisualizerTimer()
         setupTimeObserver()
+        
+        // Auto-connect cloud services on startup if tokens exist
+        Task { [weak self] in
+            guard let self = self else { return }
+            if !self.soundCloudOAuth.isEmpty {
+                Self.log("Startup: Auto-connecting SoundCloud...")
+                await self.connectSoundCloud()
+            }
+            if !self.spotifyToken.isEmpty {
+                Self.log("Startup: Auto-connecting Spotify...")
+                await self.connectSpotify()
+            }
+        }
 
         // Notify player of initial volume
         player.volume = Float(volume)
@@ -934,9 +947,15 @@ class PlayerViewModel: ObservableObject {
                         self.albums.removeAll { $0.kind == .spotify }
                         self.albums.removeAll { $0.kind == .demo }
                         self.albums.append(album)
-                        self.selectedAlbumId = album.id
-                        self.playingAlbumId = album.id
-                        self.currentTrack = fetchedTracks.first
+                        if self.selectedAlbumId == nil {
+                            self.selectedAlbumId = album.id
+                        }
+                        if self.playingAlbumId == nil {
+                            self.playingAlbumId = album.id
+                        }
+                        if self.currentTrack == nil {
+                            self.currentTrack = fetchedTracks.first
+                        }
                         self.persistLibrary()
                         self.spotifyToken = token
                         Keychain.save(token, account: "spotify_token")
@@ -1237,9 +1256,15 @@ class PlayerViewModel: ObservableObject {
             self.albums.removeAll { [.likes, .uploads, .playlist].contains($0.kind) }
             self.albums.removeAll { $0.kind == .demo }
             self.albums.append(contentsOf: newAlbums)
-            self.selectedAlbumId = newAlbums.first?.id
-            self.playingAlbumId = newAlbums.first?.id
-            self.currentTrack = newAlbums.first?.tracks.first
+            if self.selectedAlbumId == nil {
+                self.selectedAlbumId = newAlbums.first?.id
+            }
+            if self.playingAlbumId == nil {
+                self.playingAlbumId = newAlbums.first?.id
+            }
+            if self.currentTrack == nil {
+                self.currentTrack = newAlbums.first?.tracks.first
+            }
 
             self.persistLibrary()
             self.persistOAuth()
@@ -1468,11 +1493,19 @@ class PlayerViewModel: ObservableObject {
 
     private static func fetchCollection(urlString: String, clientId: String, oauth: String?) async throws -> [[String: Any]] {
         guard var c = URLComponents(string: urlString) else { return [] }
-        c.queryItems = [
-            URLQueryItem(name: "client_id", value: clientId),
-            URLQueryItem(name: "limit", value: "200"),
-            URLQueryItem(name: "linked_partitioning", value: "1")
-        ]
+        var queryItems = c.queryItems ?? []
+        
+        if !queryItems.contains(where: { $0.name == "client_id" }) {
+            queryItems.append(URLQueryItem(name: "client_id", value: clientId))
+        }
+        if !queryItems.contains(where: { $0.name == "limit" }) {
+            queryItems.append(URLQueryItem(name: "limit", value: "200"))
+        }
+        if !queryItems.contains(where: { $0.name == "linked_partitioning" }) {
+            queryItems.append(URLQueryItem(name: "linked_partitioning", value: "1"))
+        }
+        
+        c.queryItems = queryItems
         var nextURL = c.url
         var allItems: [[String: Any]] = []
         var pageCount = 0
