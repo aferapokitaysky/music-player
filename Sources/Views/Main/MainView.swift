@@ -623,95 +623,170 @@ struct MainView: View {
                 ZStack {
                     if viewModel.searchResults.isEmpty {
                         VStack(spacing: 0) {
-                            // Recent queries if empty and history exists
-                            if viewModel.searchQuery.isEmpty && !recentQueries.isEmpty {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    HStack {
-                                        Text("НЕДАВНИЕ ЗАПРОСЫ")
-                                            .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                                            .tracking(1.5)
-                                            .foregroundColor(palette.textTertiary)
-                                        
-                                        Spacer()
-                                        
-                                        Button(action: clearRecentQueries) {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(palette.textTertiary)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .help("Очистить историю")
-                                    }
-                                    .padding(.horizontal, 16)
+                            if viewModel.searchQuery.isEmpty {
+                                if recentQueries.isEmpty && viewModel.recentSearchTracks.isEmpty {
+                                    // Completely empty onboarding state
+                                    Spacer()
                                     
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
-                                            ForEach(recentQueries, id: \.self) { query in
-                                                Button(action: {
-                                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.7)) {
-                                                        viewModel.searchQuery = query
-                                                        addRecentQuery(query)
-                                                        viewModel.executeSearch()
-                                                    }
-                                                }) {
-                                                    HStack(spacing: 5) {
-                                                        Image(systemName: "clock.arrow.circlepath")
-                                                            .font(.system(size: 8))
-                                                        Text(query)
-                                                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                                                    }
-                                                    .padding(.horizontal, 10)
-                                                    .padding(.vertical, 6)
-                                                    .foregroundColor(palette.textPrimary)
-                                                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(searchBrandColor.opacity(0.12)))
-                                                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(searchBrandColor.opacity(0.3), lineWidth: 1))
+                                    // Futuristic Holographic Search Icon
+                                    ZStack {
+                                        Circle()
+                                            .fill(searchBrandColor.opacity(0.06))
+                                            .frame(width: 80, height: 80)
+                                            .scaleEffect(isSearchInputFocused ? 1.08 : 1.0)
+                                            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isSearchInputFocused)
+                                        
+                                        Circle()
+                                            .stroke(searchBrandColor.opacity(0.15), lineWidth: 1.5)
+                                            .frame(width: 80, height: 80)
+                                        
+                                        Image(systemName: viewModel.searchSource == .soundCloud ? "waveform.and.mic" : "music.note.house.fill")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(searchBrandColor.opacity(0.85))
+                                    }
+                                    
+                                    VStack(spacing: 4) {
+                                        Text("ВВЕДИТЕ ЗАПРОС")
+                                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                                            .tracking(1.5)
+                                            .foregroundColor(palette.textPrimary)
+                                        
+                                        Text("Введите название трека или имя артиста для поиска на \(viewModel.searchSource == .soundCloud ? "SoundCloud" : "Spotify")")
+                                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                                            .foregroundColor(palette.textTertiary)
+                                            .multilineTextAlignment(.center)
+                                            .frame(maxWidth: 320)
+                                    }
+                                    .padding(.top, 12)
+                                    
+                                    Spacer()
+                                } else {
+                                    // Display horizontal text queries history
+                                    if !recentQueries.isEmpty {
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            HStack {
+                                                Text("НЕДАВНИЕ ЗАПРОСЫ")
+                                                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                                    .tracking(1.5)
+                                                    .foregroundColor(palette.textTertiary)
+                                                
+                                                Spacer()
+                                                
+                                                Button(action: clearRecentQueries) {
+                                                    Image(systemName: "trash")
+                                                        .font(.system(size: 10))
+                                                        .foregroundColor(palette.textTertiary)
                                                 }
                                                 .buttonStyle(.plain)
+                                                .help("Очистить историю")
+                                            }
+                                            .padding(.horizontal, 16)
+                                            
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(recentQueries, id: \.self) { query in
+                                                        Button(action: {
+                                                            withAnimation(.spring(response: 0.28, dampingFraction: 0.7)) {
+                                                                viewModel.searchQuery = query
+                                                                addRecentQuery(query)
+                                                                viewModel.executeSearch()
+                                                            }
+                                                        }) {
+                                                            HStack(spacing: 5) {
+                                                                Image(systemName: "clock.arrow.circlepath")
+                                                                    .font(.system(size: 8))
+                                                                Text(query)
+                                                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                                            }
+                                                            .padding(.horizontal, 10)
+                                                            .padding(.vertical, 6)
+                                                            .foregroundColor(palette.textPrimary)
+                                                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(searchBrandColor.opacity(0.12)))
+                                                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(searchBrandColor.opacity(0.3), lineWidth: 1))
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                    }
+                                                }
+                                                .padding(.horizontal, 16)
                                             }
                                         }
-                                        .padding(.horizontal, 16)
+                                        .padding(.top, 14)
                                     }
+                                    
+                                    // Display vertical play history
+                                    if !viewModel.recentSearchTracks.isEmpty {
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            HStack {
+                                                Text("ИСТОРИЯ ЗАПУСКОВ")
+                                                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                                    .tracking(1.5)
+                                                    .foregroundColor(palette.textTertiary)
+                                                
+                                                Spacer()
+                                                
+                                                Button(action: {
+                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                                                        viewModel.clearSearchHistory()
+                                                    }
+                                                }) {
+                                                    Image(systemName: "trash")
+                                                        .font(.system(size: 10))
+                                                        .foregroundColor(palette.textTertiary)
+                                                }
+                                                .buttonStyle(.plain)
+                                                .help("Очистить историю запусков")
+                                            }
+                                            .padding(.horizontal, 16)
+                                            
+                                            ScrollView(.vertical, showsIndicators: false) {
+                                                VStack(spacing: 4) {
+                                                    ForEach(viewModel.recentSearchTracks) { track in
+                                                        SpotlightTrackRow(track: track, album: viewModel.searchHistoryAlbum, viewModel: viewModel, brandColor: searchBrandColor)
+                                                            .environmentObject(themeManager)
+                                                    }
+                                                }
+                                                .padding(.horizontal, 10)
+                                            }
+                                        }
+                                        .padding(.top, 18)
+                                    }
+                                    
+                                    Spacer(minLength: 12)
                                 }
-                                .padding(.top, 14)
-                                .transition(.opacity)
-                            }
-
-                            Spacer()
-                            
-                            // Futuristic Holographic Search Icon
-                            ZStack {
-                                Circle()
-                                    .fill(searchBrandColor.opacity(0.06))
-                                    .frame(width: 80, height: 80)
-                                    .scaleEffect(isSearchInputFocused ? 1.08 : 1.0)
-                                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isSearchInputFocused)
+                            } else {
+                                // Searching but nothing found state
+                                Spacer()
                                 
-                                Circle()
-                                    .stroke(searchBrandColor.opacity(0.15), lineWidth: 1.5)
-                                    .frame(width: 80, height: 80)
+                                ZStack {
+                                    Circle()
+                                        .fill(searchBrandColor.opacity(0.06))
+                                        .frame(width: 80, height: 80)
+                                    
+                                    Circle()
+                                        .stroke(searchBrandColor.opacity(0.15), lineWidth: 1.5)
+                                        .frame(width: 80, height: 80)
+                                    
+                                    Image(systemName: "exclamationmark.bubble")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(searchBrandColor.opacity(0.85))
+                                }
                                 
-                                Image(systemName: viewModel.searchSource == .soundCloud ? "waveform.and.mic" : "music.note.house.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(searchBrandColor.opacity(0.85))
-                            }
-                            
-                            VStack(spacing: 4) {
-                                Text(viewModel.searchQuery.isEmpty ? "ВВЕДИТЕ ЗАПРОС" : "НИЧЕГО НЕ НАЙДЕНО")
-                                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                                    .tracking(1.5)
-                                    .foregroundColor(palette.textPrimary)
+                                VStack(spacing: 4) {
+                                    Text("НИЧЕГО НЕ НАЙДЕНО")
+                                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                                        .tracking(1.5)
+                                        .foregroundColor(palette.textPrimary)
+                                    
+                                    Text("По вашему запросу ничего не найдено. Попробуйте изменить формулировку.")
+                                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        .foregroundColor(palette.textTertiary)
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: 320)
+                                }
+                                .padding(.top, 12)
                                 
-                                Text(viewModel.searchQuery.isEmpty 
-                                     ? "Введите название трека или имя артиста для поиска на \(viewModel.searchSource == .soundCloud ? "SoundCloud" : "Spotify")" 
-                                     : "По вашему запросу ничего не найдено. Попробуйте изменить формулировку.")
-                                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                                    .foregroundColor(palette.textTertiary)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: 320)
+                                Spacer()
                             }
-                            .padding(.top, 12)
-                            
-                            Spacer()
                         }
                         .transition(.opacity)
                     } else {
@@ -2579,6 +2654,7 @@ struct SpotlightTrackRow: View {
                     if isPlayingThis {
                         viewModel.pause()
                     } else {
+                        viewModel.addTrackToSearchHistory(track)
                         viewModel.playTrack(track, in: album)
                     }
                 }

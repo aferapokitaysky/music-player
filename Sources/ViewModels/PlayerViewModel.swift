@@ -124,8 +124,14 @@ class PlayerViewModel: ObservableObject {
     @Published var searchTargetPlaylistId: String? = nil
     private var searchTask: Task<Void, Never>?
 
+    @Published var recentSearchTracks: [Track] = []
+
     var searchAlbum: Album {
         Album(id: "search", name: "Результаты поиска", kind: .custom, artworkUrl: nil, tracks: searchResults)
+    }
+
+    var searchHistoryAlbum: Album {
+        Album(id: "search_history", name: "Недавно прослушано", kind: .custom, artworkUrl: nil, tracks: recentSearchTracks)
     }
     var localPlaylists: [Album] {
         albums.filter { $0.kind == .custom && $0.id.hasPrefix("local_") }
@@ -141,6 +147,7 @@ class PlayerViewModel: ObservableObject {
     // Computed: the queue used by next/prev
     var playlist: [Track] {
         if playingAlbumId == "search" { return searchResults }
+        if playingAlbumId == "search_history" { return recentSearchTracks }
         if let id = playingAlbumId, let a = albums.first(where: { $0.id == id }) { return a.tracks }
         if let id = selectedAlbumId, let a = albums.first(where: { $0.id == id }) { return a.tracks }
         return albums.first?.tracks ?? []
@@ -184,6 +191,12 @@ class PlayerViewModel: ObservableObject {
         // Restore Spotify Token if present
         if let savedSpotify = Keychain.load(account: "spotify_token") {
             self.spotifyToken = savedSpotify
+        }
+
+        // Restore search play history
+        if let data = UserDefaults.standard.data(forKey: "recentSearchTracks"),
+           let decoded = try? JSONDecoder().decode([Track].self, from: data) {
+            self.recentSearchTracks = decoded
         }
 
         let loadedAlbums = LibraryStore.load()
@@ -1293,6 +1306,26 @@ class PlayerViewModel: ObservableObject {
         searchResults = []
         isSearching = false
         searchStatus = ""
+    }
+
+    func addTrackToSearchHistory(_ track: Track) {
+        var current = recentSearchTracks
+        if let idx = current.firstIndex(where: { $0.id == track.id }) {
+            current.remove(at: idx)
+        }
+        current.insert(track, at: 0)
+        if current.count > 6 {
+            current = Array(current.prefix(6))
+        }
+        self.recentSearchTracks = current
+        if let data = try? JSONEncoder().encode(current) {
+            UserDefaults.standard.set(data, forKey: "recentSearchTracks")
+        }
+    }
+
+    func clearSearchHistory() {
+        self.recentSearchTracks = []
+        UserDefaults.standard.removeObject(forKey: "recentSearchTracks")
     }
 
     func executeSearch() {
