@@ -151,7 +151,7 @@ struct MainView: View {
                 Spacer().frame(width: 80, height: 44)
             }
 
-            // Brand
+            // Brand & Collapse Button
             HStack(spacing: 10) {
                 AestheticLogoView(size: 38, color: palette.textPrimary)
                 VStack(alignment: .leading, spacing: 1) {
@@ -162,6 +162,22 @@ struct MainView: View {
                         .font(.system(size: 9, design: .monospaced))
                         .foregroundColor(palette.textTertiary)
                 }
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
+                        viewModel.sidebarCollapsed = true
+                    }
+                }) {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(palette.textSecondary)
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(palette.inset))
+                        .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .help("Скрыть альбомы")
             }
             .padding(.horizontal, 14)
 
@@ -284,22 +300,6 @@ struct MainView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Настройки")
-
-                Spacer()
-
-                Button(action: {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
-                        viewModel.sidebarCollapsed = true
-                    }
-                }) {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(palette.textTertiary)
-                        .frame(width: 28, height: 28)
-                        .rotationEffect(.degrees(viewModel.sidebarCollapsed ? 180 : 0))
-                }
-                .buttonStyle(.plain)
-                .help("Скрыть альбомы")
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
@@ -322,7 +322,7 @@ struct MainView: View {
             ZStack(alignment: .topLeading) {
                 WindowDragArea().frame(height: 44)
                 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     if viewModel.sidebarCollapsed {
                         Spacer().frame(width: 80)
 
@@ -343,9 +343,9 @@ struct MainView: View {
                         .help("Показать альбомы")
                     }
 
-                    Spacer()
-
                     searchToggleButton
+                    
+                    Spacer()
                 }
                 .padding(.horizontal, 14)
                 .frame(height: 44)
