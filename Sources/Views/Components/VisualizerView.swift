@@ -115,11 +115,6 @@ struct BarsCanvas: View {
             let barWidth = max(2.0, (size.width - totalSpacing - hPad * 2) / CGFloat(n))
             let cellHeight = max(1, (size.height - vPad * 2 - cellGap * CGFloat(cellCount - 1)) / CGFloat(cellCount))
 
-            // Top white, bottom dim — monochrome gradient (or inverted in light)
-            let topShade: Double = isDark ? 1.00 : 0.00
-            let midShade: Double = isDark ? 0.78 : 0.30
-            let lowShade: Double = isDark ? 0.45 : 0.55
-
             for i in 0..<n {
                 let x = hPad + CGFloat(i) * (barWidth + spacing)
                 let activeCells = Int(bars[i] * Double(cellCount))
@@ -133,17 +128,21 @@ struct BarsCanvas: View {
 
                     if isActive {
                         let t = Double(cellIndex) / Double(cellCount - 1)
-                        let shade: Double
-                        if t > 0.66 { shade = topShade }
-                        else if t > 0.33 { shade = midShade }
-                        else { shade = lowShade }
-                        ctx.fill(path, with: .color(Color(white: shade)))
+                        let color: Color
+                        if t > 0.66 {
+                            color = palette.accent
+                        } else if t > 0.33 {
+                            color = palette.accentSecondary
+                        } else {
+                            color = palette.accentSecondary.opacity(0.65)
+                        }
+                        ctx.fill(path, with: .color(color))
                     } else {
-                        ctx.fill(path, with: .color(Color(white: isDark ? 1.0 : 0.0).opacity(0.06)))
+                        ctx.fill(path, with: .color(palette.textPrimary.opacity(0.04)))
                     }
                 }
             }
-            _ = palette // silence unused
+            _ = isDark // silence unused
         }
         .drawingGroup() // CoreAnimation backed for speed
     }
