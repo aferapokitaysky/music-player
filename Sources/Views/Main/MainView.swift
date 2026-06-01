@@ -151,7 +151,7 @@ struct MainView: View {
                 Spacer().frame(width: 80, height: 44)
             }
 
-            // Brand & Collapse Button
+            // Brand
             HStack(spacing: 10) {
                 AestheticLogoView(size: 38, color: palette.textPrimary)
                 VStack(alignment: .leading, spacing: 1) {
@@ -162,22 +162,6 @@ struct MainView: View {
                         .font(.system(size: 9, design: .monospaced))
                         .foregroundColor(palette.textTertiary)
                 }
-                Spacer()
-                
-                Button(action: {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
-                        viewModel.sidebarCollapsed = true
-                    }
-                }) {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(palette.textSecondary)
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(palette.inset))
-                        .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .help("Скрыть альбомы")
             }
             .padding(.horizontal, 14)
 
@@ -285,7 +269,7 @@ struct MainView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Сменить тему")
-
+ 
                 Button(action: {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) {
                         showSettings.toggle()
@@ -300,6 +284,21 @@ struct MainView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Настройки")
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.62)) {
+                        viewModel.sidebarCollapsed = true
+                    }
+                }) {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(palette.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(palette.inset))
+                        .overlay(Circle().stroke(palette.stroke, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .help("Скрыть альбомы")
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
