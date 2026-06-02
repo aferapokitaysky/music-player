@@ -1,0 +1,59 @@
+name: Build Windows App (Tauri)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./aferapokitaysky-win/src-tauri -> target"
+
+      - name: Install dependencies
+        run: |
+          cd aferapokitaysky-win
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd aferapokitaysky-win
+          # Create a dummy static folder 'dist' if building frontend locally without Svelte bundler,
+          # or execute web compilation step.
+          mkdir -p dist
+          echo "<html><body>Aferapokitaysky Player</body></html>" > dist/index.html
+          npm run build -- --no-bundle
+        shell: bash
+
+      - name: Build Tauri EXE
+        run: |
+          cd aferapokitaysky-win
+          npx tauri build --bundles msi,exe
+        shell: bash
+
+      - name: Upload Build Artifacts (.exe and .msi)
+        uses: actions/upload-artifact@v4
+        with:
+          name: aferapokitaysky-windows-build
+          path: |
+            aferapokitaysky-win/src-tauri/target/release/bundle/nsis/*.exe
+            aferapokitaysky-win/src-tauri/target/release/bundle/msi/*.msi
