@@ -60,13 +60,13 @@ body {
 }
 
 .ambient-glow.cyan {
-  background: radial-gradient(circle, #00a6ff 0%, transparent 70%);
+  background: radial-gradient(circle, #ffffff 0%, transparent 70%);
   top: -100px;
   left: -200px;
 }
 
 .ambient-glow.orange {
-  background: radial-gradient(circle, #ff7b00 0%, transparent 70%);
+  background: radial-gradient(circle, #737373 0%, transparent 70%);
   bottom: 200px;
   right: -200px;
   animation-delay: -7s;
@@ -999,9 +999,9 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 18% 8%, rgba(0, 166, 255, 0.09), transparent 30%),
-    radial-gradient(circle at 82% 18%, rgba(255, 123, 0, 0.08), transparent 28%),
-    radial-gradient(circle at 50% 100%, rgba(189, 0, 255, 0.08), transparent 36%),
+    radial-gradient(circle at 18% 8%, rgba(186, 252, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(255, 224, 138, 0.06), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.05), transparent 36%),
     var(--bg-color);
 }
 
@@ -2852,54 +2852,5 @@ summary:focus-visible {
   transform: translateY(-4px) translateX(0) scale(1.015);
   border-color: rgba(255, 255, 255, 0.16);
   background-color: rgba(255, 255, 255, 0.065);
-}
-
-/* Liquid Neon Glass Border Shimmer */
-.feature-card::before,
-.experience-steps > div::before,
-.download-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(90deg, #00a6ff, #bd00ff, #ff7b00, #00a6ff);
-  background-size: 300% 300%;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: xor;
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  -webkit-mask-composite: destination-out;
-  pointer-events: none;
-  opacity: 0.12;
-  transition: opacity 0.4s ease;
-  animation: border-flow 8s linear infinite;
-}
-
-@keyframes border-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.feature-card:hover::before,
-.experience-steps > div:hover::before,
-.experience-section.is-visible .experience-steps > div:hover::before,
-.download-card:hover::before {
-  opacity: 0.58;
-}
-
-.feature-card:hover {
-  box-shadow: 0 12px 35px rgba(0, 166, 255, 0.08), 0 0 20px rgba(189, 0, 255, 0.06);
-}
-
-.experience-steps > div:hover,
-.experience-section.is-visible .experience-steps > div:hover {
-  box-shadow: 0 10px 30px rgba(189, 0, 255, 0.06), 0 0 20px rgba(255, 123, 0, 0.04);
-}
-
-.download-card:hover {
-  box-shadow: 0 15px 35px rgba(0, 166, 255, 0.09), 0 0 25px rgba(255, 123, 0, 0.06);
 }
 
