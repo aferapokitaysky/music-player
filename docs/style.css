@@ -82,16 +82,26 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 8%;
-  background: rgba(0, 0, 0, 0.45);
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 1180px; /* aligns with --page-max */
+  padding: 10px 24px;
+  border-radius: 20px;
+  background: rgba(6, 6, 8, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
-  border-bottom: 1px solid var(--card-border);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
   z-index: 1000;
+}
+
+.header.is-hidden {
+  transform: translate(-50%, -120%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .logo-area {
@@ -1062,15 +1072,14 @@ summary:focus-visible {
 }
 
 .header {
-  padding: 18px max(22px, calc((100vw - var(--page-max)) / 2));
-  transition: padding 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .header.is-scrolled {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  background: rgba(0, 0, 0, 0.72);
-  border-bottom-color: rgba(255, 255, 255, 0.12);
+  top: 12px;
+  background: rgba(6, 6, 8, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .logo-area {
@@ -1789,8 +1798,21 @@ summary:focus-visible {
 @media (max-width: 860px) {
   .header {
     gap: 18px;
-    padding-left: 18px;
-    padding-right: 18px;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    transform: none;
+    padding: 10px 20px;
+    border-radius: 18px;
+  }
+  .header.is-scrolled {
+    top: 10px;
+  }
+  .header.is-hidden {
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .brand-name {
@@ -1809,7 +1831,7 @@ summary:focus-visible {
 
   .hero {
     min-height: auto;
-    padding: 118px 18px 64px;
+    padding: 138px 18px 64px;
   }
 
   .hero-title-main {
@@ -1898,12 +1920,49 @@ summary:focus-visible {
 
 @media (max-width: 560px) {
   .header {
-    align-items: flex-start;
-    flex-direction: column;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    transform: none;
+    padding: 8px 16px;
+    border-radius: 16px;
+    height: 52px;
+  }
+  .header.is-scrolled {
+    top: 8px;
+  }
+
+  .logo-area {
+    gap: 6px;
+  }
+
+  .logo-img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .brand-name {
+    font-size: 15px;
   }
 
   .nav-links {
-    width: 100%;
+    width: auto;
+    gap: 0;
+  }
+
+  .nav-links a:not(.nav-cta) {
+    display: none;
+  }
+
+  .nav-cta {
+    padding: 6px 14px;
+    font-size: 11px;
+    border-radius: 12px;
+  }
+
+  .hero {
+    padding-top: 160px;
   }
 
   .hero-title-main {

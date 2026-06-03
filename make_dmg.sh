@@ -27,8 +27,8 @@ rm -f "$DMG_NAME" "$TMP_DMG"
 rm -rf dmg_temp
 mkdir -p dmg_temp
 
-echo -e "\033[0;33mPreparing installer files and generating background...\033[0m"
-python3 scratch/generate_background.py
+echo -e "\033[0;33mPreparing installer files and using existing background...\033[0m"
+# python3 scratch/generate_background.py
 mkdir -p dmg_temp/.background
 cp docs/dmg_background.png dmg_temp/.background/background.png
 cp -R "$APP_PATH" dmg_temp/

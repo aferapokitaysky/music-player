@@ -159,47 +159,45 @@ drawParticles();
 // --- CUSTOM CURSOR PHYSICS & INTERACTIVE HOVER STATE ---
 const cursorDot = document.getElementById('cursor-dot');
 const cursorRing = document.getElementById('cursor-ring');
-let mouseX = -100, mouseY = -100;
-let ringX = -100, ringY = -100;
+const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
 
-window.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    
-    if (cursorDot) {
+if (hasFinePointer && cursorDot && cursorRing) {
+    let mouseX = -100, mouseY = -100;
+    let ringX = -100, ringY = -100;
+
+    window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        
         cursorDot.style.display = 'block';
         cursorDot.style.left = mouseX + 'px';
         cursorDot.style.top = mouseY + 'px';
-    }
-    if (cursorRing) {
         cursorRing.style.display = 'block';
-    }
-});
+    });
 
-function tickCursor() {
-    ringX += (mouseX - ringX) * 0.16;
-    ringY += (mouseY - ringY) * 0.16;
-    
-    if (cursorRing) {
+    function tickCursor() {
+        ringX += (mouseX - ringX) * 0.16;
+        ringY += (mouseY - ringY) * 0.16;
+        
         cursorRing.style.left = ringX + 'px';
         cursorRing.style.top = ringY + 'px';
+        requestAnimationFrame(tickCursor);
     }
-    requestAnimationFrame(tickCursor);
-}
-tickCursor();
+    tickCursor();
 
-// Set up interactive cursor hover classes
-const interactiveElements = 'a, button, [onclick], .hero-chip, input, details';
-document.addEventListener('mouseover', (e) => {
-    if (e.target.closest(interactiveElements)) {
-        document.body.classList.add('hovering');
-    }
-});
-document.addEventListener('mouseout', (e) => {
-    if (e.target.closest(interactiveElements)) {
-        document.body.classList.remove('hovering');
-    }
-});
+    // Set up interactive cursor hover classes
+    const interactiveElements = 'a, button, [onclick], .hero-chip, input, details';
+    document.addEventListener('mouseover', (e) => {
+        if (e.target.closest(interactiveElements)) {
+            document.body.classList.add('hovering');
+        }
+    });
+    document.addEventListener('mouseout', (e) => {
+        if (e.target.closest(interactiveElements)) {
+            document.body.classList.remove('hovering');
+        }
+    });
+}
 
 
 // --- SCREENSHOT 3D PERSPECTIVE TILT ANIMATION ---
@@ -239,6 +237,12 @@ if (screenshotFrame) {
 const header = document.querySelector('.header');
 function updateHeaderState() {
     if (!header) return;
+    const threshold = 120;
+    if (window.scrollY > threshold) {
+        header.classList.add('is-hidden');
+    } else {
+        header.classList.remove('is-hidden');
+    }
     header.classList.toggle('is-scrolled', window.scrollY > 18);
 }
 window.addEventListener('scroll', updateHeaderState, { passive: true });
