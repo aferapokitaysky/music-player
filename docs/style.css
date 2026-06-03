@@ -108,6 +108,7 @@ body {
 .logo-img {
   width: 34px;
   height: 34px;
+  flex-shrink: 0;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.25));
 }
