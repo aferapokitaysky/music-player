@@ -1664,6 +1664,17 @@ summary:focus-visible {
   border-radius: var(--panel-radius);
   background-color: rgba(255, 255, 255, 0.035);
   overflow: hidden;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.faq-list details:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.faq-list details[open] {
+  border-color: rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 .faq-list summary {
@@ -1672,6 +1683,7 @@ summary:focus-visible {
   padding: 20px 22px;
   font-size: 16px;
   font-weight: 900;
+  user-select: none;
 }
 
 .faq-list summary::-webkit-details-marker {
@@ -1680,13 +1692,17 @@ summary:focus-visible {
 
 .faq-list summary::after {
   content: '+';
+  display: inline-block;
   float: right;
   color: var(--accent-aqua);
   font-weight: 900;
+  font-size: 18px;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), color 0.3s;
 }
 
 .faq-list details[open] summary::after {
-  content: '-';
+  transform: rotate(45deg);
+  color: var(--accent-warm, #ffe08a);
 }
 
 .faq-list p {
@@ -1694,6 +1710,14 @@ summary:focus-visible {
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.7;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.faq-list details[open] p {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .search-card {
