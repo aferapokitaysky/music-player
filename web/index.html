@@ -3,281 +3,444 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aferapokitaysky Player — Премиум кастомизируемый аудио-плеер для macOS & Windows</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Aferapokitaysky Player — это аудио-плеер нового поколения для macOS и Windows. Киберпанк-дизайн, умный Spotlight-поиск, интеграция со Spotify/SoundCloud, интерактивный конструктор интерфейса и живой визуализатор.">
-    <meta name="keywords" content="аудио плеер, музыкальный плеер, скачать музыкальный плеер, tauri player, music player macOS, music player windows, spotify player, soundcloud player, aferapokitaysky, кастомизируемый плеер, эквалайзер, аудио визуализатор">
+    <title>Aferapokitaysky Player - кастомизируемый музыкальный плеер для macOS и Windows</title>
+    <meta name="description" content="Aferapokitaysky Player - бесплатный музыкальный плеер с кастомным интерфейсом, Spotlight-поиском, SoundCloud и Spotify, живым аудиовизуализатором и адаптивным liquid glass дизайном.">
+    <meta name="keywords" content="Aferapokitaysky Player, музыкальный плеер, аудио плеер macOS, аудио плеер Windows, SoundCloud player, Spotify player, визуализатор музыки, кастомизируемый плеер">
     <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-title" content="Aferapokitaysky">
     <link rel="canonical" href="https://aferapokitaysky.github.io/music-player/">
+    <link rel="icon" type="image/png" href="logo.png">
 
-    <!-- OpenGraph (Social Media SEO) -->
-    <meta property="og:title" content="Aferapokitaysky Player — Звук. Кастомизация. Стиль.">
-    <meta property="og:description" content="Киберпанк медиаплеер с полной кастомизацией интерфейса, встроенным поиском Spotlight и живым неоновым визуализатором. Доступен под macOS и Windows.">
-    <meta property="og:image" content="../logo.png">
+    <meta property="og:title" content="Aferapokitaysky Player - кастомизируемый музыкальный плеер">
+    <meta property="og:description" content="Музыкальный плеер в liquid glass эстетике: Spotlight-поиск, SoundCloud и Spotify, конструктор интерфейса, живой аудиовизуализатор и версии для macOS и Windows.">
+    <meta property="og:image" content="https://aferapokitaysky.github.io/music-player/logo.png">
+    <meta property="og:url" content="https://aferapokitaysky.github.io/music-player/">
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="ru_RU">
     <meta property="og:site_name" content="Aferapokitaysky Player">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Aferapokitaysky Player">
+    <meta name="twitter:description" content="Кастомизируемый музыкальный плеер с живым визуализатором и быстрым поиском треков.">
+    <meta name="twitter:image" content="https://aferapokitaysky.github.io/music-player/logo.png">
 
-    <!-- Schema.org JSON-LD (Search Snippet SEO) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Aferapokitaysky Player",
-      "operatingSystem": "macOS 12.0+, Windows 10+",
-      "applicationCategory": "MultimediaApplication",
-      "downloadUrl": "https://aferapokitaysky.github.io/music-player/Aferapokitaysky.zip",
-      "offers": {
-        "@type": "Offer",
-        "price": "0.00",
-        "priceCurrency": "USD"
-      },
-      "description": "Premium, highly customizable audio player with interactive neon layouts, built-in global search palette, and reactive sound spectrum visualizers."
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "Aferapokitaysky Player",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "macOS 12.0+, Windows 10+",
+          "downloadUrl": "https://aferapokitaysky.github.io/music-player/Aferapokitaysky.zip",
+          "image": "https://aferapokitaysky.github.io/music-player/logo.png",
+          "description": "Бесплатный музыкальный плеер с кастомным интерфейсом, Spotlight-поиском, SoundCloud и Spotify, живыми визуализаторами и адаптивным liquid glass дизайном.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Конструктор колонок и блоков плеера",
+            "Spotlight-поиск по трекам",
+            "Интеграции SoundCloud и Spotify",
+            "Визуализаторы Bars, Wave, Circle и Dots"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "На каких системах работает Aferapokitaysky Player?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "На сайте доступна ZIP-сборка для macOS. Windows-версия находится в процессе сборки и будет распространяться как EXE или MSI."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Можно ли менять интерфейс плеера?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Да. В плеере можно менять порядок основных колонок и порядок блоков внутри панели проигрывателя."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Какие визуализаторы есть в демо?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "В интерактивном макете доступны Bars, Wave, Circle и Dots. Все режимы реагируют на состояние воспроизведения."
+              }
+            }
+          ]
+        }
+      ]
     }
     </script>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <a class="skip-link" href="#main">Перейти к контенту</a>
+    <canvas id="ambient-particles" aria-hidden="true"></canvas>
+    <div class="ambient-glow cyan" aria-hidden="true"></div>
+    <div class="ambient-glow orange" aria-hidden="true"></div>
+    <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
 
-    <!-- Background Particle Canvas (Reacts to audio playback/beats) -->
-    <canvas id="ambient-particles"></canvas>
-
-    <!-- Ambient glowing lights -->
-    <div class="ambient-glow cyan"></div>
-    <div class="ambient-glow orange"></div>
-
-    <!-- Header Navigation -->
     <header class="header">
-        <div class="logo-area">
-            <img src="logo.png" class="logo-img" alt="Aferapokitaysky Logo">
+        <a class="logo-area" href="#main" aria-label="Aferapokitaysky Player - вверх страницы">
+            <img src="logo.png" class="logo-img" width="34" height="34" alt="Логотип Aferapokitaysky Player">
             <span class="brand-name">Aferapokitaysky</span>
-        </div>
-        <nav class="nav-links">
-            <a href="#features">Особенности</a>
-            <a href="#demo">Интерактивный макет</a>
+        </a>
+        <nav class="nav-links" aria-label="Главная навигация">
+            <a href="#features">Возможности</a>
+            <a href="#demo">Демо</a>
+            <a href="#faq">FAQ</a>
             <a href="#download" class="nav-cta">Скачать</a>
         </nav>
     </header>
 
-    <!-- Hero Section -->
-    <main class="hero">
-        <h1 class="hero-title">
-            ЗВУК.<br>
-            <span class="gradient-text">КАСТОМИЗАЦИЯ.</span><br>
-            СТИЛЬ.
-        </h1>
-        <p class="hero-subtitle">
-            Премиум-аудиопроигрыватель в киберпанк-эстетике. Собери свой собственный интерфейс с помощью горизонтального и вертикального конструкторов, находи треки мгновенно через Spotlight-поиск и наслаждайся звуком.
-        </p>
-
-        <!-- Download CTAs -->
-        <div id="download" class="download-container">
-            <a href="../Aferapokitaysky.zip" download class="download-card mac" id="download-mac">
-                <div class="card-inner">
-                    <img src="mac-os-2-logo-png-transparent.png" class="os-logo" alt="macOS">
-                    <div class="info">
-                        <span class="os-title">Скачать для macOS</span>
-                        <span class="os-details">Версия 1.0 (Apple Silicon / Intel, .ZIP)</span>
-                    </div>
+    <main id="main">
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-copy">
+                <h1 class="hero-title" id="hero-title">Aferapokitaysky Player</h1>
+                <p class="hero-subtitle">
+                    Музыкальный плеер, который можно собрать под себя: живой визуализатор, быстрый поиск, SoundCloud и Spotify, темы и перестановка интерфейса без лишней возни.
+                </p>
+                <div class="hero-actions" id="download">
+                    <a href="../Aferapokitaysky.zip" download class="primary-action" id="download-mac">
+                        <img src="mac-os-2-logo-png-transparent.png" class="action-logo" width="26" height="26" alt="">
+                        <span>Скачать для macOS</span>
+                    </a>
+                    <a href="#demo" class="secondary-action">Открыть демо</a>
                 </div>
-            </a>
-            <a href="#" class="download-card win" id="download-win">
-                <div class="card-inner">
-                    <img src="Microsoft_Windows-Logo.wine.svg" class="os-logo" alt="Windows">
-                    <div class="info">
-                        <span class="os-title">Скачать для Windows</span>
-                        <span class="os-details">Tauri Сборка (.EXE / .MSI в процессе сборки)</span>
+                <dl class="hero-meta" aria-label="Ключевые факты">
+                    <div>
+                        <dt>4</dt>
+                        <dd>режима визуализатора</dd>
                     </div>
-                </div>
-            </a>
-        </div>
-    </main>
-
-    <!-- Features Section -->
-    <section id="features" class="features-section">
-        <h2 class="section-heading">ПОЧЕМУ ИМЕННО ОН?</h2>
-        <div class="features-grid">
-            <article class="feature-card">
-                <h3>🛠 Конструктор макетов</h3>
-                <p>Меняйте порядок колонок (Сайдбар, Треки, Пульт управления) в реальном времени. Настраивайте вертикальное положение элементов внутри плеера под свои предпочтения.</p>
-            </article>
-            <article class="feature-card">
-                <h3>🔍 Spotlight Поиск</h3>
-                <p>Умное поисковое окно вызывается нажатием кнопки и ищет треки по базам Spotify и SoundCloud одновременно с сохранением истории ваших любимых запусков.</p>
-            </article>
-            <article class="feature-card">
-                <h3>🌌 Аудиоспектр</h3>
-                <p>4 уникальных интерактивных режима визуализатора: Bars, Wave, Circle, Dots. Столбики подстраиваются под выбранную вами тему оформления.</p>
-            </article>
-        </div>
-    </section>
-
-    <!-- Interactive Mockup & Demo Section -->
-    <section id="demo" class="demo-section">
-        <h2 class="section-heading">ИНТЕРАКТИВНЫЙ МАКЕТ ПЛЕЕРА</h2>
-        <p class="section-description">Попробуйте изменить порядок блоков интерфейса прямо в браузере с помощью интерактивных кнопок!</p>
-
-        <!-- UI Layout Constructor Mockup -->
-        <div class="app-mockup" id="mockup-frame" onmousemove="updateLiquidHighlight(event)">
-            <!-- Mac style traffic light titlebar -->
-            <div class="mac-traffic-lights">
-                <span class="light close"></span>
-                <span class="light minimize"></span>
-                <span class="light maximize"></span>
+                    <div>
+                        <dt>2</dt>
+                        <dd>источника поиска</dd>
+                    </div>
+                    <div>
+                        <dt>0</dt>
+                        <dd>лишних подписок</dd>
+                    </div>
+                </dl>
             </div>
 
-            <!-- Sidebar column mockup -->
-            <div class="mock-column mock-sidebar" id="block-sidebar" style="order: 1;">
-                <div class="mock-header">
-                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                    <span>БИБЛИОТЕКА</span>
+            <div class="hero-console" aria-label="Превью интерфейса Aferapokitaysky Player">
+                <div class="hero-console-bar">
+                    <div class="mac-traffic-lights mini">
+                        <span class="light close"></span>
+                        <span class="light minimize"></span>
+                        <span class="light maximize"></span>
+                    </div>
+                    <span>now playing</span>
                 </div>
-                <div class="mock-item active" onclick="selectMockAlbum('likes')">
-                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    <span>Лайки · SoundCloud</span>
-                </div>
-                <div class="mock-item" onclick="selectMockAlbum('charts')">
-                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
-                    <span>Топ-Чарты</span>
-                </div>
-                <div class="mock-item" onclick="selectMockAlbum('local')">
-                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                    <span>Локальные треки</span>
-                </div>
-                <div class="mock-footer">
-                    <button class="theme-toggle-btn" onclick="cycleMockTheme()">
-                        <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.03458 19.176 5.06154 19.4545 4.95405 19.6733C4.52479 20.5472 4.8966 22 6 22H12Z"></path><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor"></circle><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor"></circle><circle cx="16.5" cy="9.5" r="1.5" fill="currentColor"></circle></svg>
-                        <span>Тема: Темная</span>
-                    </button>
+                <div class="hero-console-grid">
+                    <div class="hero-library">
+                        <span class="hero-label">Библиотека</span>
+                        <button type="button" class="hero-chip active">Лайки</button>
+                        <button type="button" class="hero-chip">Топ-чарты</button>
+                        <button type="button" class="hero-chip">Локальные</button>
+                    </div>
+                    <div class="hero-tracklist">
+                        <span class="hero-label">new - ptrkxlord</span>
+                        <div class="hero-track active"><span>Мой Флоу Со Справкой</span><em>1:55</em></div>
+                        <div class="hero-track"><span>EMBR KRUIGER</span><em>2:21</em></div>
+                        <div class="hero-track"><span>NICKI MINAJ</span><em>1:37</em></div>
+                    </div>
+                    <div class="hero-now">
+                        <span class="hero-label">Сейчас играет</span>
+                        <strong id="hero-now-title">Мой Флоу Со Справкой</strong>
+                        <span id="hero-now-artist">Anonymous Ember</span>
+                        <div class="hero-mini-spectrum" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                        </div>
+                        <div class="hero-progress"><span id="hero-progress"></span></div>
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Track List column mockup -->
-            <div class="mock-column mock-tracks" id="block-tracks" style="order: 2;">
-                <div class="mock-header">
-                    <span>СПИСОК ТРЕКОВ</span>
-                    <button class="mock-search-trigger" onclick="openSearchOverlay()">
-                        <svg class="mock-icon inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <section id="features" class="features-section reveal" aria-labelledby="features-title">
+            <div class="section-intro">
+                <h2 class="section-heading" id="features-title">Что делает плеер удобным</h2>
+                <p class="section-description">Не просто темная оболочка, а интерфейс для ежедневного прослушивания: быстро найти, быстро переставить, быстро включить.</p>
+            </div>
+            <div class="features-grid">
+                <article class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h16"/><path d="M17 9l3 3-3 3"/></svg>
+                    <h3>Конструктор макетов</h3>
+                    <p>Колонки и блоки плеера можно переставлять прямо в интерфейсе, чтобы оставить только привычный порядок.</p>
+                </article>
+                <article class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+                    <h3>Spotlight-поиск</h3>
+                    <p>Командная палитра ищет треки по SoundCloud и Spotify, хранит историю и быстро запускает результат.</p>
+                </article>
+                <article class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 18V9M9 18V5M14 18v-7M19 18V3"/></svg>
+                    <h3>Живой спектр</h3>
+                    <p>Bars, Wave, Circle и Dots реагируют на состояние воспроизведения и поддерживают общую тему интерфейса.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="experience-section reveal" aria-labelledby="experience-title">
+            <div class="experience-copy">
+                <h2 class="section-heading" id="experience-title">Сайт показывает реальный UX</h2>
+                <p>Кликайте по трекам, меняйте тему, переставляйте блоки и открывайте поиск. Макет не статичный: он помогает понять, как будет ощущаться приложение до скачивания.</p>
+            </div>
+            <div class="experience-steps" aria-label="Сценарии демо">
+                <div><span>01</span><strong>Выберите альбом</strong><p>Треклист меняется без перезагрузки страницы.</p></div>
+                <div><span>02</span><strong>Запустите трек</strong><p>Прогресс, частицы и спектр переходят в активный режим.</p></div>
+                <div><span>03</span><strong>Откройте поиск</strong><p>Нажмите кнопку поиска или клавишу /.</p></div>
+            </div>
+        </section>
+
+        <section id="demo" class="demo-section reveal" aria-labelledby="demo-title">
+            <div class="section-intro">
+                <h2 class="section-heading" id="demo-title">Интерактивный плеер</h2>
+                <p class="section-description">Мини-версия интерфейса приложения: 3 трека, живая панель проигрывателя, поиск, темы и визуализатор.</p>
+            </div>
+
+            <div class="app-mockup app-player" id="mockup-frame" onmousemove="updateLiquidHighlight(event)" aria-label="Интерактивный плеер как в приложении">
+                <div class="app-titlebar">
+                    <div class="mac-traffic-lights">
+                        <span class="light close"></span>
+                        <span class="light minimize"></span>
+                        <span class="light maximize"></span>
+                    </div>
+                    <div class="app-window-title">
+                        <img src="logo.png" width="22" height="22" alt="">
+                        <span>Aferapokitaysky Player</span>
+                    </div>
+                    <button type="button" class="mock-search-trigger app-title-search" onclick="openSearchOverlay()">
+                        <svg class="mock-icon inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         <span>Поиск</span>
                     </button>
                 </div>
-                <div class="tracks-list-container" id="mock-tracks-container">
-                    <div class="mock-track active" onclick="playMockTrack('Я устал', '1.Kla$')"><span>Я устал</span><span class="time">3:25</span></div>
-                    <div class="mock-track" onclick="playMockTrack('INNA - Love', 'INNA')"><span>INNA - Love</span><span class="time">3:24</span></div>
-                    <div class="mock-track" onclick="playMockTrack('Мармелад', 'Катя Лель')"><span>Мармелад</span><span class="time">2:02</span></div>
-                </div>
-            </div>
 
-            <!-- Player column mockup -->
-            <div class="mock-column mock-player" id="block-player" style="order: 3;">
-                <div class="mock-player-block" id="p-meta" style="order: 1;">
-                    <div class="mock-nowplaying">
-                        <div class="mock-art">
-                            <svg class="mock-icon large" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                <div class="app-shell">
+                    <aside class="mock-column mock-sidebar app-sidebar" id="block-sidebar" style="order: 1;">
+                        <div class="app-brand">
+                            <img src="logo.png" width="58" height="58" alt="">
+                            <div>
+                                <strong>Aferapokitaysky</strong>
+                                <span>Player · Pro</span>
+                            </div>
                         </div>
-                        <div>
-                            <h4 id="nowplaying-title">Я устал</h4>
-                            <p id="nowplaying-artist">1.Kla$</p>
+                        <div class="library-line">
+                            <span>Библиотека</span>
+                            <button type="button" aria-label="Добавить плейлист">+</button>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="mock-player-block" id="p-visualizer" style="order: 2;">
-                    <div class="mock-visualizer-header">
-                        <span class="vis-title">AUDIO SPECTRUM</span>
-                        <div class="vis-tabs">
-                            <button class="vis-tab active" id="btn-vis-bars" onclick="setVisualizerMode('bars')">BARS</button>
-                            <button class="vis-tab" id="btn-vis-wave" onclick="setVisualizerMode('wave')">WAVE</button>
-                            <button class="vis-tab" id="btn-vis-circle" onclick="setVisualizerMode('circle')">CIRCLE</button>
-                            <button class="vis-tab" id="btn-vis-dots" onclick="setVisualizerMode('dots')">DOTS</button>
+                        <button type="button" class="mock-item app-album active" onclick="selectMockAlbum('likes')">
+                            <span class="album-thumb cover-2"></span>
+                            <span><strong>new · ptrkxlord</strong><em>3 трека</em></span>
+                        </button>
+                        <button type="button" class="mock-item app-album" onclick="selectMockAlbum('charts')">
+                            <span class="album-thumb cover-1"></span>
+                            <span><strong>Лайки · ptrkxlord</strong><em>избранное</em></span>
+                        </button>
+                        <button type="button" class="mock-item app-album" onclick="selectMockAlbum('local')">
+                            <span class="album-thumb cover-3"></span>
+                            <span><strong>hello 2</strong><em>локально</em></span>
+                        </button>
+                        <div class="mock-footer">
+                            <button type="button" class="theme-toggle-btn" onclick="cycleMockTheme()">
+                                <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.03458 19.176 5.06154 19.4545 4.95405 19.6733C4.52479 20.5472 4.8966 22 6 22H12Z"></path><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor"></circle><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor"></circle><circle cx="16.5" cy="9.5" r="1.5" fill="currentColor"></circle></svg>
+                                <span>Тема: Темная</span>
+                            </button>
                         </div>
-                    </div>
-                    <canvas id="visualizer-canvas"></canvas>
-                </div>
-                
-                <div class="mock-player-block" id="p-controls" style="order: 3;">
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill" id="track-progress"></div>
-                    </div>
-                    <div class="mock-controls">
-                        <button class="mock-control-btn" onclick="prevMockTrack()">
-                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-                        </button>
-                        <button class="mock-control-btn play-btn" id="play-pause-toggle" onclick="togglePlayState()">
-                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg play" id="play-svg"><path d="M8 5v14l11-7z"/></svg>
-                        </button>
-                        <button class="mock-control-btn" onclick="nextMockTrack()">
-                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    </aside>
 
-        <!-- Customizer controls -->
-        <div class="demo-controls">
-            <div class="control-group">
-                <span>ПОРЯДОК КОЛОНОК:</span>
-                <button class="btn" onclick="shiftColumns(-1)">◀ Сдвинуть влево</button>
-                <button class="btn" onclick="shiftColumns(1)">Сдвинуть вправо ▶</button>
-            </div>
-            <div class="control-group">
-                <span>РЕДАКТОР ПЛЕЕРА:</span>
-                <button class="btn" onclick="shiftPlayerBlocks(-1)">🔼 Сдвинуть блоки вверх</button>
-                <button class="btn" onclick="shiftPlayerBlocks(1)">Сдвинуть блоки вниз 🔽</button>
-            </div>
-        </div>
-    </section>
+                    <section class="mock-column mock-tracks app-tracks" id="block-tracks" style="order: 2;">
+                        <div class="tracks-head">
+                            <div>
+                                <h3>new · ptrkxlord</h3>
+                                <span>3 трека</span>
+                            </div>
+                            <button type="button" class="mock-search-trigger" onclick="openSearchOverlay()">
+                                <svg class="mock-icon inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <span>Поиск</span>
+                            </button>
+                        </div>
+                        <div class="tracks-list-container" id="mock-tracks-container">
+                            <button type="button" class="mock-track app-track" onclick="playTrackAt(0)">
+                                <span class="track-cover cover-1"></span>
+                                <span class="track-info"><strong>Европа ФМ</strong><em>tuborosho</em></span>
+                                <span class="time">1:52</span>
+                            </button>
+                            <button type="button" class="mock-track app-track active" onclick="playTrackAt(1)">
+                                <span class="track-cover cover-2"></span>
+                                <span class="track-info"><strong>Мой Флоу Со Справкой</strong><em>Anonymous Ember</em></span>
+                                <span class="time">1:55</span>
+                            </button>
+                            <button type="button" class="mock-track app-track" onclick="playTrackAt(2)">
+                                <span class="track-cover cover-3"></span>
+                                <span class="track-info"><strong>NICKI MINAJ</strong><em>Anonymous Ember</em></span>
+                                <span class="time">1:37</span>
+                            </button>
+                        </div>
+                    </section>
 
-    <!-- Spotlight Search Overlay -->
-    <div class="search-overlay" id="search-overlay" style="display: none;" onclick="closeSearchOverlay()">
+                    <section class="mock-column mock-player app-player-column" id="block-player" style="order: 3;">
+                        <div class="player-topline">
+                            <span>♫ 2 / 3</span>
+                            <button type="button" onclick="cycleMockTheme()">FX</button>
+                        </div>
+
+                        <div class="mock-player-block player-meta" id="p-meta" style="order: 1;" aria-live="polite">
+                            <div class="app-cover cover-2" id="current-cover"></div>
+                            <div class="now-meta">
+                                <span>Сейчас играет</span>
+                                <h3 id="nowplaying-title">Мой Флоу Со Справкой</h3>
+                                <p id="nowplaying-artist">Anonymous Ember</p>
+                            </div>
+                        </div>
+
+                        <div class="mock-player-block player-spectrum" id="p-visualizer" style="order: 2;">
+                            <div class="mock-visualizer-header">
+                                <span class="vis-title">Audio spectrum</span>
+                                <div class="vis-tabs" role="tablist" aria-label="Режим визуализатора">
+                                    <button type="button" class="vis-tab active" id="btn-vis-bars" onclick="setVisualizerMode('bars')">Bars</button>
+                                    <button type="button" class="vis-tab" id="btn-vis-wave" onclick="setVisualizerMode('wave')">Wave</button>
+                                    <button type="button" class="vis-tab" id="btn-vis-circle" onclick="setVisualizerMode('circle')">Circle</button>
+                                    <button type="button" class="vis-tab" id="btn-vis-dots" onclick="setVisualizerMode('dots')">Dots</button>
+                                </div>
+                            </div>
+                            <canvas id="visualizer-canvas" aria-label="Анимированный аудиовизуализатор"></canvas>
+                        </div>
+
+                        <div class="mock-player-block player-controls-zone" id="p-controls" style="order: 3;">
+                            <div class="progress-row">
+                                <span id="demo-current-time">0:00</span>
+                                <div class="progress-bar-container" aria-hidden="true">
+                                    <div class="progress-bar-fill" id="track-progress"></div>
+                                </div>
+                                <span id="demo-total-time">1:55</span>
+                            </div>
+                            <div class="mock-controls" aria-label="Управление воспроизведением">
+                                <button type="button" class="mock-control-btn" onclick="prevMockTrack()" aria-label="Предыдущий трек">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                                </button>
+                                <button type="button" class="mock-control-btn play-btn" id="play-pause-toggle" onclick="togglePlayState()" aria-label="Воспроизвести или поставить на паузу">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg play" id="play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <button type="button" class="mock-control-btn" onclick="nextMockTrack()" aria-label="Следующий трек">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg>
+                                </button>
+                            </div>
+                            <div class="volume-row">
+                                <span>Volume</span>
+                                <div><i></i></div>
+                                <em>80</em>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+
+        <section class="download-section reveal" aria-labelledby="download-title">
+            <h2 class="section-heading" id="download-title">Скачать Aferapokitaysky Player</h2>
+            <div class="download-container">
+                <a href="../Aferapokitaysky.zip" download class="download-card mac">
+                    <div class="card-inner">
+                        <img src="mac-os-2-logo-png-transparent.png" class="os-logo" width="48" height="48" alt="">
+                        <div class="info">
+                            <span class="os-title">macOS</span>
+                            <span class="os-details">ZIP-сборка для Apple Silicon и Intel</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="#faq" class="download-card win" id="download-win" aria-describedby="windows-note">
+                    <div class="card-inner">
+                        <img src="Microsoft_Windows-Logo.wine.svg" class="os-logo" width="48" height="48" alt="">
+                        <div class="info">
+                            <span class="os-title">Windows</span>
+                            <span class="os-details" id="windows-note">EXE / MSI сборка готовится</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section id="faq" class="faq-section reveal" aria-labelledby="faq-title">
+            <h2 class="section-heading" id="faq-title">FAQ</h2>
+            <div class="faq-list">
+                <details open>
+                    <summary>Что уже можно попробовать?</summary>
+                    <p>На сайте можно скачать macOS ZIP-сборку и потыкать интерактивный макет с поиском, темами, визуализатором и перестановкой блоков.</p>
+                </details>
+                <details>
+                    <summary>Windows-версия будет?</summary>
+                    <p>Да, Windows-сборка вынесена как отдельная карточка. Сейчас она отмечена как готовящаяся EXE / MSI версия.</p>
+                </details>
+                <details>
+                    <summary>Это только промо или демо тоже работает?</summary>
+                    <p>Демо работает локально в браузере: треки переключаются, поиск фильтрует результаты, визуализатор и частицы реагируют на play/pause.</p>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <div class="search-overlay" id="search-overlay" style="display: none;" onclick="closeSearchOverlay()" role="dialog" aria-modal="true" aria-labelledby="search-title">
         <div class="search-card" onclick="event.stopPropagation()">
             <div class="search-header">
                 <span class="search-icon-wrapper">
-                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </span>
-                <input type="text" id="search-input" placeholder="Поиск треков в SoundCloud..." oninput="handleSearchInput(event)">
+                <label class="visually-hidden" for="search-input" id="search-title">Поиск треков</label>
+                <input type="text" id="search-input" placeholder="Поиск треков в SoundCloud..." oninput="handleSearchInput(event)" autocomplete="off">
             </div>
             <div class="search-tabs">
-                <button class="search-tab active" id="tab-sc" onclick="setSearchSource('soundCloud')">SoundCloud</button>
-                <button class="search-tab" id="tab-sp" onclick="setSearchSource('spotify')">Spotify</button>
+                <button type="button" class="search-tab active" id="tab-sc" onclick="setSearchSource('soundCloud')">SoundCloud</button>
+                <button type="button" class="search-tab" id="tab-sp" onclick="setSearchSource('spotify')">Spotify</button>
             </div>
             <div class="search-results scrollable" id="search-results-list">
                 <div class="history-section">
-                    <div class="section-title">ИСТОРИЯ ЗАПУСКОВ</div>
-                    <div class="track-row" onclick="playMockTrack('Я устал', '1.Kla$'); closeSearchOverlay()">
+                    <div class="section-title">История запусков</div>
+                    <button type="button" class="track-row" onclick="playTrackAt(1); closeSearchOverlay()">
                         <span class="mini-play">
-                            <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg"><path d="M8 5v14l11-7z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                         </span>
-                        <div>
-                            <span class="track-name">Я устал</span>
-                            <span class="track-artist">1.Kla$</span>
-                        </div>
-                    </div>
-                    <div class="track-row" onclick="playMockTrack('INNA - Love', 'INNA'); closeSearchOverlay()">
-                        <span class="mini-play">▶</span>
-                        <div>
-                            <span class="track-name">INNA - Love</span>
-                            <span class="track-artist">INNA</span>
-                        </div>
-                    </div>
+                        <span>
+                            <span class="track-name">Мой Флоу Со Справкой</span>
+                            <span class="track-artist">Anonymous Ember</span>
+                        </span>
+                    </button>
+                    <button type="button" class="track-row" onclick="playTrackAt(0); closeSearchOverlay()">
+                        <span class="mini-play">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
+                        <span>
+                            <span class="track-name">Европа ФМ</span>
+                            <span class="track-artist">tuborosho</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Page Footer -->
     <footer class="page-footer">
-        <p>&copy; 2026 Aferapokitaysky Player. Все права защищены. Разработано с любовью и киберпанком.</p>
+        <p>&copy; 2026 Aferapokitaysky Player. Liquid glass музыкальный плеер для macOS и Windows.</p>
     </footer>
 
+    <noscript>
+        <p class="noscript-note">Для интерактивного макета, поиска и визуализатора нужен JavaScript.</p>
+    </noscript>
     <script src="script.js"></script>
 </body>
 </html>

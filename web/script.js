@@ -5,25 +5,28 @@ let trackProgress = 35; // percentage
 let playProgressInterval;
 
 // Track library database
+const demoTracks = [
+    { title: "Европа ФМ", artist: "tuborosho", duration: "1:52", cover: "cover-1" },
+    { title: "Мой Флоу Со Справкой", artist: "Anonymous Ember", duration: "1:55", cover: "cover-2" },
+    { title: "NICKI MINAJ", artist: "Anonymous Ember", duration: "1:37", cover: "cover-3" }
+];
+
 const mockAlbums = {
-    likes: [
-        { title: "Я устал", artist: "1.Kla$" },
-        { title: "INNA - Love", artist: "INNA" },
-        { title: "Мармелад", artist: "Катя Лель" }
-    ],
-    charts: [
-        { title: "Gimme! Gimme! Gimme!", artist: "ABBA" },
-        { title: "Du Hast", artist: "Rammstein" },
-        { title: "Toxic", artist: "Britney Spears" }
-    ],
-    local: [
-        { title: "Tea & Chill", artist: "Lofi Beats" },
-        { title: "Sunset Drive", artist: "Synthwave Producer" },
-        { title: "Rainy Cafe", artist: "Acoustic Duo" }
-    ]
+    likes: demoTracks,
+    charts: demoTracks,
+    local: demoTracks
 };
 let currentPlaylist = 'likes';
-let currentTrackIndex = 0;
+let currentTrackIndex = 1;
+let prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+if (reducedMotionQuery.addEventListener) {
+    reducedMotionQuery.addEventListener('change', (event) => {
+        prefersReducedMotion = event.matches;
+        syncParticleDensity();
+    });
+}
 
 // Frequencies for visualizer
 let barsCount = 36;
@@ -38,31 +41,71 @@ const partCtx = partCanvas.getContext('2d');
 
 // --- BACKGROUND PARTICLE SYSTEM (Cosmic Dust) ---
 let particles = [];
-const particleCount = 65;
+let particleResizeTick = null;
+const particleColors = ['#ffffff', '#bafcff', '#ffe08a', '#9b9b9b'];
+const pointer = { x: -9999, y: -9999, active: false };
+
+function getParticleTargetCount() {
+    const area = window.innerWidth * window.innerHeight;
+    const target = Math.round(area / 15000);
+    return prefersReducedMotion ? 26 : Math.max(48, Math.min(145, target));
+}
+
+function createParticle(width = window.innerWidth, height = window.innerHeight) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 0.24 + 0.08;
+    const depth = Math.random() * 0.8 + 0.25;
+    return {
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        depth,
+        size: Math.random() * 1.9 + 0.55,
+        opacity: Math.random() * 0.42 + 0.14,
+        color: particleColors[Math.floor(Math.random() * particleColors.length)]
+    };
+}
 
 function initParticles() {
-    particles = [];
-    const colors = ['#ffffff', '#b3b3b3', '#737373'];
-    for (let i = 0; i < particleCount; i++) {
-        particles.push({
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
-            vx: (Math.random() - 0.5) * 0.35,
-            vy: (Math.random() - 0.5) * 0.35,
-            size: Math.random() * 2.2 + 0.6,
-            opacity: Math.random() * 0.4 + 0.1,
-            color: colors[Math.floor(Math.random() * colors.length)]
-        });
+    particles = Array.from({ length: getParticleTargetCount() }, () => createParticle());
+}
+
+function syncParticleDensity() {
+    const target = getParticleTargetCount();
+    while (particles.length < target) {
+        particles.push(createParticle());
+    }
+    if (particles.length > target) {
+        particles.length = target;
     }
 }
 
 function resizeParticlesCanvas() {
-    partCanvas.width = window.innerWidth;
-    partCanvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    partCanvas.width = Math.floor(window.innerWidth * dpr);
+    partCanvas.height = Math.floor(window.innerHeight * dpr);
+    partCanvas.style.width = `${window.innerWidth}px`;
+    partCanvas.style.height = `${window.innerHeight}px`;
+    partCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    syncParticleDensity();
 }
 window.addEventListener('resize', () => {
-    resizeParticlesCanvas();
-    resizeVisCanvas();
+    if (particleResizeTick) cancelAnimationFrame(particleResizeTick);
+    particleResizeTick = requestAnimationFrame(() => {
+        resizeParticlesCanvas();
+        resizeVisCanvas();
+    });
+});
+
+window.addEventListener('pointermove', (event) => {
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    pointer.active = true;
+});
+
+window.addEventListener('pointerleave', () => {
+    pointer.active = false;
 });
 resizeParticlesCanvas();
 initParticles();
@@ -71,33 +114,64 @@ initParticles();
 let simulatedBass = 0;
 
 function drawParticles() {
-    partCtx.clearRect(0, 0, partCanvas.width, partCanvas.height);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    partCtx.clearRect(0, 0, width, height);
     
     // speed multiplier increases if playing and based on bass frequency peaks
-    const speedMultiplier = 1.0 + (isPlaying ? simulatedBass * 8.0 : 0.0);
-    const opacityMultiplier = isPlaying ? (0.6 + simulatedBass * 0.4) : 0.4;
+    const speedMultiplier = prefersReducedMotion ? 0.05 : 0.72 + (isPlaying ? simulatedBass * 6.2 : 0.0);
+    const opacityMultiplier = isPlaying ? (0.62 + simulatedBass * 0.52) : 0.38;
     const padding = 20;
 
     for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
+        const pointerDx = p.x - pointer.x;
+        const pointerDy = p.y - pointer.y;
+        const pointerDistance = Math.hypot(pointerDx, pointerDy);
+
+        if (pointer.active && pointerDistance < 120 && pointerDistance > 0) {
+            const push = (120 - pointerDistance) / 120;
+            p.vx += (pointerDx / pointerDistance) * push * 0.012;
+            p.vy += (pointerDy / pointerDistance) * push * 0.012;
+        }
         
         // Move particle
-        p.x += p.vx * speedMultiplier;
-        p.y += p.vy * speedMultiplier;
+        p.x += p.vx * speedMultiplier * p.depth;
+        p.y += p.vy * speedMultiplier * p.depth;
+        p.vx *= 0.995;
+        p.vy *= 0.995;
 
         // Wrap boundaries
-        if (p.x < -padding) p.x = partCanvas.width + padding;
-        else if (p.x > partCanvas.width + padding) p.x = -padding;
+        if (p.x < -padding) p.x = width + padding;
+        else if (p.x > width + padding) p.x = -padding;
 
-        if (p.y < -padding) p.y = partCanvas.height + padding;
-        else if (p.y > partCanvas.height + padding) p.y = -padding;
+        if (p.y < -padding) p.y = height + padding;
+        else if (p.y > height + padding) p.y = -padding;
 
         // Draw particle
         partCtx.fillStyle = p.color;
         partCtx.globalAlpha = p.opacity * opacityMultiplier;
         partCtx.beginPath();
-        partCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        partCtx.arc(p.x, p.y, p.size * (isPlaying ? 1 + simulatedBass * 0.35 : 1), 0, Math.PI * 2);
         partCtx.fill();
+
+        if (!prefersReducedMotion && isPlaying) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const n = particles[j];
+                const dx = p.x - n.x;
+                const dy = p.y - n.y;
+                const distance = Math.hypot(dx, dy);
+                if (distance < 84) {
+                    partCtx.globalAlpha = (1 - distance / 84) * 0.1 * (0.4 + simulatedBass);
+                    partCtx.strokeStyle = p.color;
+                    partCtx.lineWidth = 0.6;
+                    partCtx.beginPath();
+                    partCtx.moveTo(p.x, p.y);
+                    partCtx.lineTo(n.x, n.y);
+                    partCtx.stroke();
+                }
+            }
+        }
     }
     partCtx.globalAlpha = 1.0;
     requestAnimationFrame(drawParticles);
@@ -108,9 +182,9 @@ drawParticles();
 // --- VISUALIZER DRAW LOOP ---
 function resizeVisCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    visCanvas.width = visCanvas.clientWidth * dpr;
-    visCanvas.height = visCanvas.clientHeight * dpr;
-    visCtx.scale(dpr, dpr);
+    visCanvas.width = Math.max(1, Math.floor(visCanvas.clientWidth * dpr));
+    visCanvas.height = Math.max(1, Math.floor(visCanvas.clientHeight * dpr));
+    visCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 resizeVisCanvas();
 
@@ -118,10 +192,15 @@ function setVisualizerMode(mode) {
     currentVisualizerMode = mode;
     document.querySelectorAll('.vis-tab').forEach(tab => {
         tab.classList.remove('active');
+        tab.setAttribute('aria-selected', 'false');
     });
     const btn = document.getElementById(`btn-vis-${mode}`);
-    if (btn) btn.classList.add('active');
+    if (btn) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+    }
 }
+setVisualizerMode(currentVisualizerMode);
 
 function updateFrequencies() {
     // Generate simulated audio spectrum values
@@ -318,14 +397,17 @@ drawVisualizer();
 function togglePlayState() {
     isPlaying = !isPlaying;
     const playSvg = document.getElementById('play-svg');
+    const playButton = document.getElementById('play-pause-toggle');
+    document.body.classList.toggle('is-playing', isPlaying);
+    if (playButton) playButton.setAttribute('aria-pressed', String(isPlaying));
     if (isPlaying) {
         if (playSvg) {
             playSvg.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
             playSvg.classList.remove('play');
         }
         playProgressInterval = setInterval(() => {
-            trackProgress = (trackProgress + 0.4) % 100;
-            document.getElementById('track-progress').style.width = `${trackProgress}%`;
+            trackProgress = (trackProgress + 0.35) % 100;
+            updateProgressUI();
         }, 100);
     } else {
         if (playSvg) {
@@ -336,13 +418,80 @@ function togglePlayState() {
     }
 }
 
-function playMockTrack(title, artist) {
-    document.getElementById('nowplaying-title').innerText = title;
-    document.getElementById('nowplaying-artist').innerText = artist;
+function durationToSeconds(duration) {
+    const [minutes, seconds] = duration.split(':').map(Number);
+    return minutes * 60 + seconds;
+}
+
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function getCurrentTrack() {
+    return mockAlbums[currentPlaylist][currentTrackIndex] || demoTracks[0];
+}
+
+function findTrack(title, artist) {
+    return demoTracks.find(track => track.title === title && track.artist === artist) || demoTracks.find(track => track.title === title) || demoTracks[0];
+}
+
+function updateProgressUI() {
+    const progress = Math.max(0, Math.min(100, trackProgress));
+    const track = getCurrentTrack();
+    const duration = durationToSeconds(track.duration);
+    const currentSeconds = Math.round((progress / 100) * duration);
+    const progressBar = document.getElementById('track-progress');
+    const heroProgress = document.getElementById('hero-progress');
+    const currentTime = document.getElementById('demo-current-time');
+    const totalTime = document.getElementById('demo-total-time');
+
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (heroProgress) heroProgress.style.width = `${progress}%`;
+    if (currentTime) currentTime.textContent = formatTime(currentSeconds);
+    if (totalTime) totalTime.textContent = track.duration;
+}
+
+function updateCover(track) {
+    const cover = document.getElementById('current-cover');
+    if (!cover) return;
+    cover.classList.remove('cover-1', 'cover-2', 'cover-3');
+    cover.classList.add(track.cover);
+}
+
+function updateActiveTrackRow() {
+    const tracksElements = document.querySelectorAll('.mock-track');
+    tracksElements.forEach((el, index) => {
+        el.classList.toggle('active', index === currentTrackIndex);
+    });
+}
+
+function playTrackAt(index) {
+    const list = mockAlbums[currentPlaylist];
+    currentTrackIndex = (index + list.length) % list.length;
+    const track = getCurrentTrack();
+    playMockTrack(track.title, track.artist, track.duration);
+}
+
+function playMockTrack(title, artist, duration) {
+    const track = findTrack(title, artist);
+    const trackIndex = mockAlbums[currentPlaylist].findIndex(item => item.title === track.title && item.artist === track.artist);
+    if (trackIndex >= 0) currentTrackIndex = trackIndex;
+
+    document.getElementById('nowplaying-title').textContent = track.title;
+    document.getElementById('nowplaying-artist').textContent = track.artist;
+    const heroTitle = document.getElementById('hero-now-title');
+    const heroArtist = document.getElementById('hero-now-artist');
+    if (heroTitle) heroTitle.textContent = track.title;
+    if (heroArtist) heroArtist.textContent = track.artist;
+    document.title = `${track.title} - ${track.artist} | Aferapokitaysky Player`;
+    updateCover(track);
+    updateActiveTrackRow();
     
     // Reset track progress
     trackProgress = 0;
-    document.getElementById('track-progress').style.width = '0%';
+    updateProgressUI();
     
     // Automatically switch playing state to playing
     if (!isPlaying) {
@@ -360,32 +509,34 @@ function selectMockAlbum(albumKey) {
     
     const indexMap = { likes: 0, charts: 1, local: 2 };
     items[indexMap[albumKey]].classList.add('active');
+    document.querySelectorAll('.hero-chip').forEach((chip, index) => {
+        chip.classList.toggle('active', index === indexMap[albumKey]);
+    });
 
     // Update track list container
     const tracksContainer = document.getElementById('mock-tracks-container');
     tracksContainer.innerHTML = '';
     
     mockAlbums[albumKey].forEach((track, index) => {
-        const item = document.createElement('div');
-        item.className = 'mock-track' + (index === 0 ? ' active' : '');
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'mock-track app-track' + (index === 0 ? ' active' : '');
         item.onclick = () => {
             currentTrackIndex = index;
-            document.querySelectorAll('.mock-track').forEach(el => el.classList.remove('active'));
-            item.classList.add('active');
-            playMockTrack(track.title, track.artist);
+            playMockTrack(track.title, track.artist, track.duration);
         };
-        
-        // Generate nice dummy times
-        const times = ["3:25", "3:24", "2:02", "4:15", "3:10"];
-        const time = times[index % times.length];
-        
-        item.innerHTML = `<span>${track.title}</span><span class="time">${time}</span>`;
+
+        item.innerHTML = `
+            <span class="track-cover ${track.cover}"></span>
+            <span class="track-info"><strong>${track.title}</strong><em>${track.artist}</em></span>
+            <span class="time">${track.duration}</span>
+        `;
         tracksContainer.appendChild(item);
     });
 
     // Play first track of selected album
     const first = mockAlbums[albumKey][0];
-    playMockTrack(first.title, first.artist);
+    playMockTrack(first.title, first.artist, first.duration);
 }
 
 function prevMockTrack() {
@@ -402,15 +553,7 @@ function nextMockTrack() {
 
 function updateTrackSelection() {
     const track = mockAlbums[currentPlaylist][currentTrackIndex];
-    
-    // Update visual selector in tracks list
-    const tracksElements = document.querySelectorAll('.mock-track');
-    tracksElements.forEach(el => el.classList.remove('active'));
-    if (tracksElements[currentTrackIndex]) {
-        tracksElements[currentTrackIndex].classList.add('active');
-    }
-    
-    playMockTrack(track.title, track.artist);
+    playMockTrack(track.title, track.artist, track.duration);
 }
 
 
@@ -485,36 +628,31 @@ function handleSearchInput(e) {
         list.innerHTML = `
             <div class="history-section">
                 <div class="section-title">ИСТОРИЯ ЗАПУСКОВ</div>
-                <div class="track-row" onclick="playMockTrack('Я устал', '1.Kla$'); closeSearchOverlay()">
-                    <span class="mini-play">▶</span>
-                    <div>
-                        <span class="track-name">Я устал</span>
-                        <span class="track-artist">1.Kla$</span>
-                    </div>
-                </div>
-                <div class="track-row" onclick="playMockTrack('INNA - Love', 'INNA'); closeSearchOverlay()">
-                    <span class="mini-play">▶</span>
-                    <div>
-                        <span class="track-name">INNA - Love</span>
-                        <span class="track-artist">INNA</span>
-                    </div>
-                </div>
+                <button type="button" class="track-row" onclick="playTrackAt(1); closeSearchOverlay()">
+                    <span class="mini-play">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    </span>
+                    <span>
+                        <span class="track-name">Мой Флоу Со Справкой</span>
+                        <span class="track-artist">Anonymous Ember</span>
+                    </span>
+                </button>
+                <button type="button" class="track-row" onclick="playTrackAt(0); closeSearchOverlay()">
+                    <span class="mini-play">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    </span>
+                    <span>
+                        <span class="track-name">Европа ФМ</span>
+                        <span class="track-artist">tuborosho</span>
+                    </span>
+                </button>
             </div>
         `;
         return;
     }
 
     // Filter track search simulator
-    const allTracks = [
-        { title: "Я устал", artist: "1.Kla$" },
-        { title: "INNA - Love", artist: "INNA" },
-        { title: "Мармелад", artist: "Катя Лель" },
-        { title: "Gimme! Gimme! Gimme!", artist: "ABBA" },
-        { title: "Du Hast", artist: "Rammstein" },
-        { title: "Toxic", artist: "Britney Spears" },
-        { title: "Tea & Chill", artist: "Lofi Beats" },
-        { title: "Sunset Drive", artist: "Synthwave Producer" }
-    ];
+    const allTracks = demoTracks;
 
     const results = allTracks.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
 
@@ -524,13 +662,15 @@ function handleSearchInput(e) {
     } else {
         results.forEach(track => {
             html += `
-                <div class="track-row" onclick="playMockTrack('${track.title}', '${track.artist}'); closeSearchOverlay()">
-                    <span class="mini-play">▶</span>
-                    <div>
+                <button type="button" class="track-row" onclick="playMockTrack('${track.title}', '${track.artist}', '${track.duration}'); closeSearchOverlay()">
+                    <span class="mini-play">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    </span>
+                    <span>
                         <span class="track-name">${track.title}</span>
                         <span class="track-artist">${track.artist}</span>
-                    </div>
-                </div>
+                    </span>
+                </button>
             `;
         });
     }
@@ -570,6 +710,8 @@ function cycleMockTheme() {
         doc.style.setProperty('--card-elevated', 'rgba(255, 255, 255, 0.85)');
         doc.style.setProperty('--card-border', 'rgba(0, 0, 0, 0.08)');
         doc.style.setProperty('--divider', 'rgba(0, 0, 0, 0.07)');
+        doc.style.setProperty('--accent-aqua', '#007c89');
+        doc.style.setProperty('--accent-warm', '#a25b00');
     } else if (currentThemeIndex === 2) {
         // Cosmic (custom blue-tinted)
         doc.style.setProperty('--bg-color', '#06060c');
@@ -580,6 +722,8 @@ function cycleMockTheme() {
         doc.style.setProperty('--card-elevated', 'rgba(15, 23, 42, 0.9)');
         doc.style.setProperty('--card-border', 'rgba(148, 163, 184, 0.1)');
         doc.style.setProperty('--divider', 'rgba(148, 163, 184, 0.08)');
+        doc.style.setProperty('--accent-aqua', '#bafcff');
+        doc.style.setProperty('--accent-warm', '#d9ff8f');
     } else {
         // Dark mode (default)
         doc.style.setProperty('--bg-color', '#000000');
@@ -590,6 +734,8 @@ function cycleMockTheme() {
         doc.style.setProperty('--card-elevated', 'rgba(6, 6, 8, 0.85)');
         doc.style.setProperty('--card-border', 'rgba(255, 255, 255, 0.08)');
         doc.style.setProperty('--divider', 'rgba(255, 255, 255, 0.07)');
+        doc.style.setProperty('--accent-aqua', '#bafcff');
+        doc.style.setProperty('--accent-warm', '#ffe08a');
     }
 }
 
@@ -604,8 +750,12 @@ window.addEventListener('mousemove', (e) => {
     mouseY = e.clientY;
     
     if (cursorDot) {
+        cursorDot.style.display = 'block';
         cursorDot.style.left = mouseX + 'px';
         cursorDot.style.top = mouseY + 'px';
+    }
+    if (cursorRing) {
+        cursorRing.style.display = 'block';
     }
 });
 
@@ -646,3 +796,53 @@ function updateLiquidHighlight(e) {
     frame.style.setProperty('--mouse-y', `${y}px`);
 }
 
+// --- PAGE POLISH: HEADER, REVEAL, HERO GLASS ---
+const header = document.querySelector('.header');
+function updateHeaderState() {
+    if (!header) return;
+    header.classList.toggle('is-scrolled', window.scrollY > 18);
+}
+window.addEventListener('scroll', updateHeaderState, { passive: true });
+updateHeaderState();
+
+const revealObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.16 })
+    : null;
+
+document.querySelectorAll('.reveal').forEach((section) => {
+    if (revealObserver && !prefersReducedMotion) {
+        revealObserver.observe(section);
+    } else {
+        section.classList.add('is-visible');
+    }
+});
+
+const heroConsole = document.querySelector('.hero-console');
+if (heroConsole) {
+    heroConsole.addEventListener('pointermove', (event) => {
+        const rect = heroConsole.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        heroConsole.style.setProperty('--hero-x', `${x}%`);
+        heroConsole.style.setProperty('--hero-y', `${y}%`);
+    });
+}
+
+document.querySelectorAll('.hero-chip').forEach((chip, index) => {
+    chip.addEventListener('click', () => {
+        const albumKeys = ['likes', 'charts', 'local'];
+        selectMockAlbum(albumKeys[index] || 'likes');
+        document.querySelectorAll('.hero-chip').forEach(item => item.classList.remove('active'));
+        chip.classList.add('active');
+    });
+});
+
+updateCover(getCurrentTrack());
+updateProgressUI();
