@@ -326,10 +326,9 @@ body {
   max-width: 600px;
 }
 
-.app-mockup {
+.app-screenshot-frame {
   width: 100%;
   max-width: 960px;
-  height: 520px;
   background: rgba(6, 6, 8, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.12); /* Glossy highlight border */
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 40px 100px rgba(0, 0, 0, 0.8);
@@ -337,23 +336,36 @@ body {
   -webkit-backdrop-filter: blur(30px);
   border-radius: 24px;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
-  padding-top: 30px; /* space for traffic lights */
-  transition: border-color 0.3s;
+  transition: transform 0.15s ease-out, border-color 0.3s;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 
 /* Liquid glass highlight reflective layer */
-.app-mockup::before {
+.app-screenshot-frame::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(400px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255, 255, 255, 0.08), transparent 60%);
+  background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.08), transparent 60%);
   pointer-events: none;
   z-index: 10;
+}
+
+.app-screenshot-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-screenshot-img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 /* Traffic Lights */
@@ -1376,6 +1388,7 @@ summary:focus-visible {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff, rgba(186, 252, 255, 0.45));
   animation: mini-spectrum 1.2s ease-in-out infinite alternate;
+  transform-origin: bottom;
 }
 
 .hero-mini-spectrum i:nth-child(1) { height: 34%; animation-delay: -0.1s; }
@@ -1388,7 +1401,7 @@ summary:focus-visible {
 .hero-mini-spectrum i:nth-child(8) { height: 78%; animation-delay: -0.5s; }
 
 @keyframes mini-spectrum {
-  from { transform: scaleY(0.55); opacity: 0.45; }
+  from { transform: scaleY(0.4); opacity: 0.45; }
   to { transform: scaleY(1); opacity: 1; }
 }
 
@@ -1402,11 +1415,34 @@ summary:focus-visible {
 
 .hero-progress span {
   display: block;
-  width: 35%;
+  width: 0%;
   height: 100%;
   background: linear-gradient(90deg, #fff, var(--accent-aqua));
   box-shadow: 0 0 22px rgba(186, 252, 255, 0.36);
-  transition: width 0.12s linear;
+  animation: play-progress 10s linear infinite;
+}
+
+@keyframes play-progress {
+  0% { width: 0%; }
+  95% { width: 100%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.95);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 99px;
+  border: 2px solid rgba(0, 0, 0, 0.95);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .section-intro {
