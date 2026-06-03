@@ -10,7 +10,7 @@ echo -e "\033[1;36m====================================================\033[0m"
 
 APP_PATH="Aferapokitaysky.app"
 DMG_NAME="Aferapokitaysky.dmg"
-VOL_NAME="Aferapokitaysky Installer"
+VOL_NAME="Aferapokitaysky"
 TMP_DMG="tmp_pack.dmg"
 
 # Check if App bundle exists
@@ -18,6 +18,9 @@ if [ ! -d "$APP_PATH" ]; then
     echo -e "\033[0;31mError: $APP_PATH not found. Please run ./build.sh first.\033[0m"
     exit 1
 fi
+
+echo -e "\033[0;33mEjecting any conflicting volumes...\033[0m"
+hdiutil detach "/Volumes/$VOL_NAME" -force || true
 
 echo -e "\033[0;33mCleaning old build outputs...\033[0m"
 rm -f "$DMG_NAME" "$TMP_DMG"
