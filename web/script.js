@@ -317,15 +317,21 @@ drawVisualizer();
 // --- PLAYER LOGIC ---
 function togglePlayState() {
     isPlaying = !isPlaying;
-    const playBtn = document.getElementById('play-pause-toggle');
+    const playSvg = document.getElementById('play-svg');
     if (isPlaying) {
-        playBtn.innerText = '⏸';
+        if (playSvg) {
+            playSvg.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            playSvg.classList.remove('play');
+        }
         playProgressInterval = setInterval(() => {
             trackProgress = (trackProgress + 0.4) % 100;
             document.getElementById('track-progress').style.width = `${trackProgress}%`;
         }, 100);
     } else {
-        playBtn.innerText = '▶';
+        if (playSvg) {
+            playSvg.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            playSvg.classList.add('play');
+        }
         clearInterval(playProgressInterval);
     }
 }
@@ -549,8 +555,8 @@ const themes = ["Темная", "Светлая", "Космическая"];
 let currentThemeIndex = 0;
 function cycleMockTheme() {
     currentThemeIndex = (currentThemeIndex + 1) % themes.length;
-    const btn = document.querySelector('.theme-toggle-btn');
-    btn.innerText = `🎨 Тема: ${themes[currentThemeIndex]}`;
+    const btn = document.querySelector('.theme-toggle-btn span');
+    if (btn) btn.innerText = `Тема: ${themes[currentThemeIndex]}`;
     
     // Toggle actual page styles to reflect visual adjustments
     const doc = document.documentElement;
@@ -586,3 +592,57 @@ function cycleMockTheme() {
         doc.style.setProperty('--divider', 'rgba(255, 255, 255, 0.07)');
     }
 }
+
+// --- CUSTOM CURSOR PHYSICS & INTERACTIVE HOVER STATE ---
+const cursorDot = document.getElementById('cursor-dot');
+const cursorRing = document.getElementById('cursor-ring');
+let mouseX = -100, mouseY = -100;
+let ringX = -100, ringY = -100;
+
+window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    
+    if (cursorDot) {
+        cursorDot.style.left = mouseX + 'px';
+        cursorDot.style.top = mouseY + 'px';
+    }
+});
+
+function tickCursor() {
+    ringX += (mouseX - ringX) * 0.16;
+    ringY += (mouseY - ringY) * 0.16;
+    
+    if (cursorRing) {
+        cursorRing.style.left = ringX + 'px';
+        cursorRing.style.top = ringY + 'px';
+    }
+    requestAnimationFrame(tickCursor);
+}
+tickCursor();
+
+// Set up interactive cursor hover classes
+const interactiveElements = 'a, button, [onclick], .mock-item, .mock-track, .btn, .search-tab, .track-row, input';
+document.addEventListener('mouseover', (e) => {
+    if (e.target.closest(interactiveElements)) {
+        document.body.classList.add('hovering');
+    }
+});
+document.addEventListener('mouseout', (e) => {
+    if (e.target.closest(interactiveElements)) {
+        document.body.classList.remove('hovering');
+    }
+});
+
+// --- LIQUID GLASS HIGHLIGHT REFLECTION ENGINE ---
+function updateLiquidHighlight(e) {
+    const frame = document.getElementById('mockup-frame');
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    frame.style.setProperty('--mouse-x', `${x}px`);
+    frame.style.setProperty('--mouse-y', `${y}px`);
+}
+

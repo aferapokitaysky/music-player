@@ -125,7 +125,7 @@
         <p class="section-description">Попробуйте изменить порядок блоков интерфейса прямо в браузере с помощью интерактивных кнопок!</p>
 
         <!-- UI Layout Constructor Mockup -->
-        <div class="app-mockup" id="mockup-frame">
+        <div class="app-mockup" id="mockup-frame" onmousemove="updateLiquidHighlight(event)">
             <!-- Mac style traffic light titlebar -->
             <div class="mac-traffic-lights">
                 <span class="light close"></span>
@@ -135,12 +135,27 @@
 
             <!-- Sidebar column mockup -->
             <div class="mock-column mock-sidebar" id="block-sidebar" style="order: 1;">
-                <div class="mock-header">📁 БИБЛИОТЕКА</div>
-                <div class="mock-item active" onclick="selectMockAlbum('likes')">❤ Лайки · SoundCloud</div>
-                <div class="mock-item" onclick="selectMockAlbum('charts')">🔥 Топ-Чарты</div>
-                <div class="mock-item" onclick="selectMockAlbum('local')">🎵 Локальные треки</div>
+                <div class="mock-header">
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <span>БИБЛИОТЕКА</span>
+                </div>
+                <div class="mock-item active" onclick="selectMockAlbum('likes')">
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    <span>Лайки · SoundCloud</span>
+                </div>
+                <div class="mock-item" onclick="selectMockAlbum('charts')">
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+                    <span>Топ-Чарты</span>
+                </div>
+                <div class="mock-item" onclick="selectMockAlbum('local')">
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    <span>Локальные треки</span>
+                </div>
                 <div class="mock-footer">
-                    <button class="theme-toggle-btn" onclick="cycleMockTheme()">🎨 Тема: Темная</button>
+                    <button class="theme-toggle-btn" onclick="cycleMockTheme()">
+                        <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.03458 19.176 5.06154 19.4545 4.95405 19.6733C4.52479 20.5472 4.8966 22 6 22H12Z"></path><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor"></circle><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor"></circle><circle cx="16.5" cy="9.5" r="1.5" fill="currentColor"></circle></svg>
+                        <span>Тема: Темная</span>
+                    </button>
                 </div>
             </div>
 
@@ -148,7 +163,10 @@
             <div class="mock-column mock-tracks" id="block-tracks" style="order: 2;">
                 <div class="mock-header">
                     <span>СПИСОК ТРЕКОВ</span>
-                    <button class="mock-search-trigger" onclick="openSearchOverlay()">🔍 Поиск</button>
+                    <button class="mock-search-trigger" onclick="openSearchOverlay()">
+                        <svg class="mock-icon inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <span>Поиск</span>
+                    </button>
                 </div>
                 <div class="tracks-list-container" id="mock-tracks-container">
                     <div class="mock-track active" onclick="playMockTrack('Я устал', '1.Kla$')"><span>Я устал</span><span class="time">3:25</span></div>
@@ -161,7 +179,9 @@
             <div class="mock-column mock-player" id="block-player" style="order: 3;">
                 <div class="mock-player-block" id="p-meta" style="order: 1;">
                     <div class="mock-nowplaying">
-                        <div class="mock-art">🎵</div>
+                        <div class="mock-art">
+                            <svg class="mock-icon large" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                        </div>
                         <div>
                             <h4 id="nowplaying-title">Я устал</h4>
                             <p id="nowplaying-artist">1.Kla$</p>
@@ -187,9 +207,15 @@
                         <div class="progress-bar-fill" id="track-progress"></div>
                     </div>
                     <div class="mock-controls">
-                        <button class="mock-control-btn" onclick="prevMockTrack()">⏮</button>
-                        <button class="mock-control-btn play-btn" id="play-pause-toggle" onclick="togglePlayState()">▶</button>
-                        <button class="mock-control-btn" onclick="nextMockTrack()">⏭</button>
+                        <button class="mock-control-btn" onclick="prevMockTrack()">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                        </button>
+                        <button class="mock-control-btn play-btn" id="play-pause-toggle" onclick="togglePlayState()">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg play" id="play-svg"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <button class="mock-control-btn" onclick="nextMockTrack()">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="control-svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -214,7 +240,9 @@
     <div class="search-overlay" id="search-overlay" style="display: none;" onclick="closeSearchOverlay()">
         <div class="search-card" onclick="event.stopPropagation()">
             <div class="search-header">
-                <span class="search-icon-wrapper">🔍</span>
+                <span class="search-icon-wrapper">
+                    <svg class="mock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
                 <input type="text" id="search-input" placeholder="Поиск треков в SoundCloud..." oninput="handleSearchInput(event)">
             </div>
             <div class="search-tabs">
@@ -225,7 +253,9 @@
                 <div class="history-section">
                     <div class="section-title">ИСТОРИЯ ЗАПУСКОВ</div>
                     <div class="track-row" onclick="playMockTrack('Я устал', '1.Kla$'); closeSearchOverlay()">
-                        <span class="mini-play">▶</span>
+                        <span class="mini-play">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="mini-play-svg"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
                         <div>
                             <span class="track-name">Я устал</span>
                             <span class="track-artist">1.Kla$</span>
