@@ -10,8 +10,8 @@
   --card-border: rgba(255, 255, 255, 0.08);
   --stroke-strong: rgba(255, 255, 255, 0.16);
   --divider: rgba(255, 255, 255, 0.07);
-  --font-title: 'Outfit', sans-serif;
-  --font-mono: 'Space Grotesk', sans-serif;
+  --font-title: 'Inter', sans-serif;
+  --font-mono: 'Inter', sans-serif;
 }
 
 * {
@@ -27,7 +27,7 @@ html {
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   position: relative;
   line-height: 1.5;
@@ -168,9 +168,6 @@ body {
 .hero-title {
   font-family: var(--font-title);
   font-weight: 900;
-  font-size: 92px;
-  line-height: 0.88;
-  letter-spacing: -4px;
   margin-bottom: 28px;
 }
 
@@ -932,16 +929,23 @@ body {
 }
 
 body.hovering .cursor-dot {
-  width: 8px;
-  height: 8px;
-  background: #000000;
+  width: 4px;
+  height: 4px;
+  background: var(--text-primary);
 }
 
 body.hovering .cursor-ring {
-  width: 38px;
-  height: 38px;
-  background-color: rgba(255, 255, 255, 0.95);
-  border-color: #ffffff;
+  width: 40px;
+  height: 40px;
+  border-color: var(--text-primary);
+  border-style: dashed;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.35);
+  animation: cursor-spin 4s linear infinite;
+}
+
+@keyframes cursor-spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 @media (pointer: fine) {
@@ -952,9 +956,13 @@ body.hovering .cursor-ring {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .hero-title {
-    font-size: 58px;
+  .hero-title-main {
+    font-size: 50px;
     letter-spacing: -2px;
+  }
+  .hero-title-sub {
+    font-size: 36px;
+    letter-spacing: -1px;
   }
   .app-mockup {
     height: auto;
@@ -1007,26 +1015,6 @@ input:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--accent-aqua);
   outline-offset: 3px;
-}
-
-.skip-link {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 3000;
-  transform: translateY(-140%);
-  background: #fff;
-  color: #000;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-  transition: transform 0.2s ease;
-}
-
-.skip-link:focus {
-  transform: translateY(0);
 }
 
 .visually-hidden {
@@ -1143,12 +1131,27 @@ summary:focus-visible {
 }
 
 .hero-title {
-  font-size: 112px;
-  line-height: 0.9;
-  letter-spacing: 0;
   margin-bottom: 26px;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.hero-title-main {
+  display: block;
+  font-size: 88px;
+  line-height: 0.95;
+  letter-spacing: -3px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.hero-title-sub {
+  display: block;
+  font-size: 64px;
+  line-height: 1.0;
+  letter-spacing: -2px;
+  font-weight: 900;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .hero-subtitle {
@@ -1537,7 +1540,7 @@ summary:focus-visible {
   background-color: rgba(255, 255, 255, 0.035);
 }
 
-.experience-steps span {
+.experience-steps > div > span {
   display: block;
   color: var(--accent-warm);
   font-size: 11px;
@@ -1755,8 +1758,13 @@ summary:focus-visible {
 }
 
 @media (max-width: 1120px) {
-  .hero-title {
-    font-size: 92px;
+  .hero-title-main {
+    font-size: 72px;
+    letter-spacing: -2.5px;
+  }
+  .hero-title-sub {
+    font-size: 52px;
+    letter-spacing: -1.5px;
   }
 
   .hero-console-grid {
@@ -1798,9 +1806,13 @@ summary:focus-visible {
     padding: 118px 18px 64px;
   }
 
-  .hero-title {
-    font-size: 68px;
-    line-height: 0.94;
+  .hero-title-main {
+    font-size: 56px;
+    letter-spacing: -2px;
+  }
+  .hero-title-sub {
+    font-size: 40px;
+    letter-spacing: -1px;
   }
 
   .hero-subtitle {
@@ -1888,9 +1900,13 @@ summary:focus-visible {
     width: 100%;
   }
 
-  .hero-title {
-    font-size: 40px;
-    line-height: 1;
+  .hero-title-main {
+    font-size: 38px;
+    letter-spacing: -1.5px;
+  }
+  .hero-title-sub {
+    font-size: 28px;
+    letter-spacing: -1px;
   }
 
   .hero-meta {
@@ -1945,8 +1961,13 @@ summary:focus-visible {
 }
 
 @media (max-width: 380px) {
-  .hero-title {
-    font-size: 36px;
+  .hero-title-main {
+    font-size: 32px;
+    letter-spacing: -1px;
+  }
+  .hero-title-sub {
+    font-size: 24px;
+    letter-spacing: -0.5px;
   }
 
   .brand-name {
@@ -2722,3 +2743,110 @@ summary:focus-visible {
   border-color: #ffffff;
   transform: scale(1.02);
 }
+
+/* Staggered Text Reveal Animations */
+.text-split-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(18px) scale(0.85);
+  filter: blur(4px);
+  transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.5s ease;
+}
+
+.text-split-char.is-space {
+  width: 0.3em;
+}
+
+.is-revealed .text-split-char {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.text-split-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(3px);
+  transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+              filter 0.6s ease;
+  margin-right: 0.2em;
+}
+
+.is-revealed .text-split-word {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* Staggered Features & Steps Entrance Animations */
+.features-section .feature-card {
+  opacity: 0;
+  transform: translateY(40px) scale(0.95);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s,
+              background-color 0.3s;
+}
+
+.features-section.is-visible .feature-card:nth-child(1) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 0.1s;
+}
+
+.features-section.is-visible .feature-card:nth-child(2) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 0.25s;
+}
+
+.features-section.is-visible .feature-card:nth-child(3) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 0.4s;
+}
+
+.features-section.is-visible .feature-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.experience-steps > div {
+  opacity: 0;
+  transform: translateY(30px) translateX(-6px);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s,
+              background-color 0.3s;
+}
+
+.experience-section.is-visible .experience-steps > div:nth-child(1) {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+  transition-delay: 0.15s;
+}
+
+.experience-section.is-visible .experience-steps > div:nth-child(2) {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+  transition-delay: 0.3s;
+}
+
+.experience-section.is-visible .experience-steps > div:nth-child(3) {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+  transition-delay: 0.45s;
+}
+
+.experience-steps > div:hover,
+.experience-section.is-visible .experience-steps > div:hover {
+  transform: translateY(-4px) translateX(0) scale(1.015);
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.065);
+}
+

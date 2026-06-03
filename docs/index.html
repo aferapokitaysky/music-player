@@ -106,7 +106,7 @@
               "name": "Кто разработчик плеера и как связаться?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Разработчиком плеера является @vacbanalert. Вы можете написать ему в Telegram: https://t.me/vacbanalert"
+                "text": "Разработчиком плеера является @ptrkxlord. Вы можете написать ему в Telegram: https://t.me/ptrkxlord"
               }
             }
           ]
@@ -117,11 +117,10 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <a class="skip-link" href="#main">Перейти к контенту</a>
     <canvas id="ambient-particles" aria-hidden="true"></canvas>
     <div class="ambient-glow cyan" aria-hidden="true"></div>
     <div class="ambient-glow orange" aria-hidden="true"></div>
@@ -144,8 +143,11 @@
     <main id="main">
         <section class="hero" aria-labelledby="hero-title">
             <div class="hero-copy">
-                <h1 class="hero-title" id="hero-title">Aferapokitaysky Player</h1>
-                <p class="hero-subtitle">
+                <h1 class="hero-title" id="hero-title">
+                    <span class="hero-title-main" data-animate="chars">Aferapokitaysky</span>
+                    <span class="hero-title-sub" data-animate="chars">Player</span>
+                </h1>
+                <p class="hero-subtitle" data-animate="words">
                     Музыкальный плеер, который можно собрать под себя: живой визуализатор, быстрый поиск, SoundCloud и Spotify, темы и перестановка интерфейса без лишней возни.
                 </p>
                 <div class="hero-actions" id="download">
@@ -157,16 +159,16 @@
                 </div>
                 <dl class="hero-meta" aria-label="Ключевые факты">
                     <div>
-                        <dt>4</dt>
-                        <dd>режима визуализатора</dd>
+                        <dt data-animate="chars">4</dt>
+                        <dd data-animate="words">режима визуализатора</dd>
                     </div>
                     <div>
-                        <dt>2</dt>
-                        <dd>источника поиска</dd>
+                        <dt data-animate="chars">2</dt>
+                        <dd data-animate="words">источника поиска</dd>
                     </div>
                     <div>
-                        <dt>0</dt>
-                        <dd>лишних подписок</dd>
+                        <dt data-animate="chars">0</dt>
+                        <dd data-animate="words">лишних подписок</dd>
                     </div>
                 </dl>
             </div>
@@ -208,44 +210,44 @@
 
         <section id="features" class="features-section reveal" aria-labelledby="features-title">
             <div class="section-intro">
-                <h2 class="section-heading" id="features-title">Что делает плеер удобным</h2>
-                <p class="section-description">Не просто темная оболочка, а интерфейс для ежедневного прослушивания: быстро найти, быстро переставить, быстро включить.</p>
+                <h2 class="section-heading" id="features-title" data-animate="words">Что делает плеер удобным</h2>
+                <p class="section-description" data-animate="words">Не просто темная оболочка, а интерфейс для ежедневного прослушивания: быстро найти, быстро переставить, быстро включить.</p>
             </div>
             <div class="features-grid">
                 <article class="feature-card">
                     <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h16"/><path d="M17 9l3 3-3 3"/></svg>
-                    <h3>Конструктор макетов</h3>
-                    <p>Колонки и блоки плеера можно переставлять прямо в интерфейсе, чтобы оставить только привычный порядок.</p>
+                    <h3 data-animate="words">Конструктор макетов</h3>
+                    <p data-animate="words">Колонки и блоки плеера можно переставлять прямо в интерфейсе, чтобы оставить только привычный порядок.</p>
                 </article>
                 <article class="feature-card">
                     <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
-                    <h3>Spotlight-поиск</h3>
-                    <p>Командная палитра ищет треки по SoundCloud и Spotify, хранит историю и быстро запускает результат.</p>
+                    <h3 data-animate="words">Spotlight-поиск</h3>
+                    <p data-animate="words">Командная палитра ищет треки по SoundCloud и Spotify, хранит историю и быстро запускает результат.</p>
                 </article>
                 <article class="feature-card">
                     <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 18V9M9 18V5M14 18v-7M19 18V3"/></svg>
-                    <h3>Живой спектр</h3>
-                    <p>Bars, Wave, Circle и Dots реагируют на состояние воспроизведения и поддерживают общую тему интерфейса.</p>
+                    <h3 data-animate="words">Живой спектр</h3>
+                    <p data-animate="words">Bars, Wave, Circle и Dots реагируют на состояние воспроизведения и поддерживают общую тему интерфейса.</p>
                 </article>
             </div>
         </section>
 
         <section class="experience-section reveal" aria-labelledby="experience-title">
             <div class="experience-copy">
-                <h2 class="section-heading" id="experience-title">Премиальный музыкальный опыт</h2>
-                <p>Aferapokitaysky Player сочетает в себе минималистичный стиль macOS и широкие возможности кастомизации. Полный контроль над вашим прослушиванием.</p>
+                <h2 class="section-heading" id="experience-title" data-animate="words">Премиальный музыкальный опыт</h2>
+                <p data-animate="words">Aferapokitaysky Player сочетает в себе минималистичный стиль macOS и широкие возможности кастомизации. Полный контроль над вашим прослушиванием.</p>
             </div>
             <div class="experience-steps" aria-label="Свойства приложения">
-                <div><span>01</span><strong>Кастомизация</strong><p>Переставляйте блоки и управляйте внешним видом интерфейса плеера под свои предпочтения.</p></div>
-                <div><span>02</span><strong>Быстрый поиск</strong><p>Spotlight-поиск мгновенно находит треки в SoundCloud и Spotify прямо с клавиатуры.</p></div>
-                <div><span>03</span><strong>Спектр звука</strong><p>Наслаждайтесь живой визуализацией с режимами Bars, Wave, Circle и Dots под любой бит.</p></div>
+                <div><span data-animate="chars">01</span><strong data-animate="words">Кастомизация</strong><p data-animate="words">Переставляйте блоки и управляйте внешним видом интерфейса плеера под свои предпочтения.</p></div>
+                <div><span data-animate="chars">02</span><strong data-animate="words">Быстрый поиск</strong><p data-animate="words">Spotlight-поиск мгновенно находит треки в SoundCloud и Spotify прямо с клавиатуры.</p></div>
+                <div><span data-animate="chars">03</span><strong data-animate="words">Спектр звука</strong><p data-animate="words">Наслаждайтесь живой визуализацией с режимами Bars, Wave, Circle и Dots под любой бит.</p></div>
             </div>
         </section>
 
         <section id="demo" class="demo-section reveal" aria-labelledby="demo-title">
             <div class="section-intro">
-                <h2 class="section-heading" id="demo-title">Интерфейс приложения</h2>
-                <p class="section-description">Чистый и продуманный liquid glass дизайн. Наведите курсор на окно плеера, чтобы ощутить 3D-перспективу.</p>
+                <h2 class="section-heading" id="demo-title" data-animate="words">Интерфейс приложения</h2>
+                <p class="section-description" data-animate="words">Чистый и продуманный liquid glass дизайн. Наведите курсор на окно плеера, чтобы ощутить 3D-перспективу.</p>
             </div>
 
             <div class="app-screenshot-frame" id="screenshot-frame" aria-label="Скриншот интерфейса приложения Aferapokitaysky Player">
@@ -256,14 +258,14 @@
         </section>
 
         <section class="download-section reveal" aria-labelledby="download-title">
-            <h2 class="section-heading" id="download-title">Скачать Aferapokitaysky Player</h2>
+            <h2 class="section-heading" id="download-title" data-animate="words">Скачать Aferapokitaysky Player</h2>
             <div class="download-container">
                 <a href="Aferapokitaysky.dmg" download class="download-card mac">
                     <div class="card-inner">
                         <img src="mac-os-2-logo-png-transparent.png" class="os-logo" width="48" height="48" alt="">
                         <div class="info">
-                            <span class="os-title">macOS</span>
-                            <span class="os-details">DMG-установка (перетащите в Applications)</span>
+                            <span class="os-title" data-animate="words">macOS</span>
+                            <span class="os-details" data-animate="words">DMG-установка (перетащите в Applications)</span>
                         </div>
                     </div>
                 </a>
@@ -271,8 +273,8 @@
                     <div class="card-inner">
                         <img src="Microsoft_Windows-Logo.wine.svg" class="os-logo" width="48" height="48" alt="">
                         <div class="info">
-                            <span class="os-title">Windows</span>
-                            <span class="os-details" id="windows-note">EXE / MSI сборка готовится</span>
+                            <span class="os-title" data-animate="words">Windows</span>
+                            <span class="os-details" id="windows-note" data-animate="words">EXE / MSI сборка готовится</span>
                         </div>
                     </div>
                 </a>
@@ -280,33 +282,33 @@
         </section>
 
         <section id="faq" class="faq-section reveal" aria-labelledby="faq-title">
-            <h2 class="section-heading" id="faq-title">FAQ</h2>
+            <h2 class="section-heading" id="faq-title" data-animate="words">FAQ</h2>
             <div class="faq-list">
                 <details open>
-                    <summary>На каких системах работает Aferapokitaysky Player?</summary>
-                    <p>Плеер полностью оптимизирован для macOS и доступен для скачивания в формате DMG. Версия для Windows находится в разработке.</p>
+                    <summary data-animate="words">На каких системах работает Aferapokitaysky Player?</summary>
+                    <p data-animate="words">Плеер полностью оптимизирован для macOS и доступен для скачивания в формате DMG. Версия для Windows находится в разработке.</p>
                 </details>
                 <details>
-                    <summary>Windows-версия будет?</summary>
-                    <p>Да, сборка для Windows (EXE/MSI) готовится и будет доступна для скачивания в ближайшее время.</p>
+                    <summary data-animate="words">Windows-версия будет?</summary>
+                    <p data-animate="words">Да, сборка для Windows (EXE/MSI) готовится и будет доступна для скачивания в ближайшее время.</p>
                 </details>
                 <details>
-                    <summary>Как установить плеер на macOS?</summary>
-                    <p>Скачайте установочный образ DMG, дважды кликните по нему и перетащите иконку Aferapokitaysky Player в папку Applications (Программы).</p>
+                    <summary data-animate="words">Как установить плеер на macOS?</summary>
+                    <p data-animate="words">Скачайте установочный образ DMG, дважды кликните по нему и перетащите иконку Aferapokitaysky Player в папку Applications (Программы).</p>
                 </details>
                 <details>
-                    <summary>Кто разработчик и как с ним связаться?</summary>
+                    <summary data-animate="words">Кто разработчик и как с ним связаться?</summary>
                     <div class="dev-card" style="margin: 0 22px 22px;">
                         <div class="dev-avatar">
                             <span class="avatar-glow"></span>
-                            <span class="avatar-char">V</span>
+                            <span class="avatar-char">P</span>
                         </div>
                         <div class="dev-info">
-                            <h4 class="dev-name">vacbanalert</h4>
-                            <p class="dev-role">Создатель Aferapokitaysky Player</p>
-                            <a href="https://t.me/vacbanalert" target="_blank" rel="noopener noreferrer" class="dev-tg-link">
+                            <h4 class="dev-name" data-animate="words">ptrkxlord</h4>
+                            <p class="dev-role" data-animate="words">Создатель Aferapokitaysky Player</p>
+                            <a href="https://t.me/ptrkxlord" target="_blank" rel="noopener noreferrer" class="dev-tg-link">
                                 <svg class="dev-tg-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="margin-right:4px; vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15.82-.77 4.57-1.09 6.27-.13.72-.4 1-.66 1.02-.57.05-1-.38-1.55-.74-.86-.57-1.35-.93-2.18-1.48-.96-.63-.34-.98.21-1.55.14-.15 2.65-2.43 2.7-2.64.01-.03.01-.13-.05-.18-.06-.05-.15-.03-.22-.02-.09.02-1.58 1-4.47 2.96-.42.29-.8.43-1.14.42-.37-.01-1.09-.21-1.63-.39-.66-.22-1.18-.33-1.13-.7.02-.19.28-.39.78-.58 3.03-1.32 5.06-2.19 6.07-2.61 2.89-1.2 3.49-1.41 3.88-1.42.09 0 .28.02.41.13.11.09.14.21.15.3l-.01.3z"/></svg>
-                                <span>Написать в Telegram</span>
+                                <span data-animate="words">Написать в Telegram</span>
                             </a>
                         </div>
                     </div>

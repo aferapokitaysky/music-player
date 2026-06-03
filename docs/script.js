@@ -304,3 +304,129 @@ function tickGlows() {
     requestAnimationFrame(tickGlows);
 }
 tickGlows();
+
+
+// --- TEXT SPLIT REVEAL ANIMATIONS (chars / words) ---
+function initTextAnimations() {
+    const charDelaySpacing = 0.022; // 22ms per character
+    const wordDelaySpacing = 0.040; // 40ms per word
+    const elementGap = 0.06;       // 60ms gap between elements in a group
+
+    // Define selectors for groups that should animate sequentially
+    const groupSelectors = [
+        '.hero-title',
+        '.hero-meta',
+        '.section-intro',
+        '.experience-copy',
+        '.features-grid',
+        '.experience-steps',
+        '.download-container',
+        '.faq-list'
+    ];
+
+    // Track elements that have already been processed to avoid double processing
+    const processedElements = new Set();
+
+    // Process a list of elements sequentially
+    function animateSequence(elements) {
+        let runningDelay = 0;
+
+        elements.forEach((el) => {
+            processedElements.add(el);
+            const mode = el.getAttribute('data-animate');
+            const original = el.textContent.trim().replace(/\s+/g, ' ');
+            el.textContent = '';
+
+            if (mode === 'chars') {
+                [...original].forEach((char) => {
+                    const span = document.createElement('span');
+                    span.className = 'text-split-char' + (char === ' ' ? ' is-space' : '');
+                    span.textContent = char === ' ' ? '\u00A0' : char;
+                    span.style.transitionDelay = `${runningDelay.toFixed(3)}s`;
+                    el.appendChild(span);
+                    runningDelay += charDelaySpacing;
+                });
+            } else if (mode === 'words') {
+                original.split(' ').forEach((word) => {
+                    const span = document.createElement('span');
+                    span.className = 'text-split-word';
+                    span.textContent = word;
+                    span.style.transitionDelay = `${runningDelay.toFixed(3)}s`;
+                    el.appendChild(span);
+                    el.appendChild(document.createTextNode(' '));
+                    runningDelay += wordDelaySpacing;
+                });
+            }
+            runningDelay += elementGap; // Add a small gap before the next element starts
+        });
+    }
+
+    // 1. Process group containers sequentially
+    groupSelectors.forEach((groupSel) => {
+        document.querySelectorAll(groupSel).forEach((groupContainer) => {
+            const animChildren = Array.from(groupContainer.querySelectorAll('[data-animate]'));
+            if (animChildren.length > 0) {
+                animateSequence(animChildren);
+            }
+        });
+    });
+
+    // 2. Process any remaining individual [data-animate] elements (not in a group)
+    const allAnimElements = document.querySelectorAll('[data-animate]');
+    const individualElements = Array.from(allAnimElements).filter(el => !processedElements.has(el));
+    if (individualElements.length > 0) {
+        individualElements.forEach((el) => {
+            animateSequence([el]);
+        });
+    }
+
+    // 3. Set up IntersectionObserver to trigger 'is-revealed' class
+    const observeTargets = new Set();
+    groupSelectors.forEach((groupSel) => {
+        document.querySelectorAll(groupSel).forEach((container) => {
+            if (container.querySelectorAll('[data-animate]').length > 0) {
+                observeTargets.add(container);
+            }
+        });
+    });
+    // Add individual elements not in any group
+    individualElements.forEach((el) => {
+        observeTargets.add(el);
+    });
+
+    if (observeTargets.size > 0) {
+        const textObserver = 'IntersectionObserver' in window
+            ? new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        // Reveal all animated children inside this container (or the element itself)
+                        if (entry.target.hasAttribute('data-animate')) {
+                            entry.target.classList.add('is-revealed');
+                        } else {
+                            entry.target.querySelectorAll('[data-animate]').forEach((child) => {
+                                child.classList.add('is-revealed');
+                            });
+                        }
+                        textObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' })
+            : null;
+
+        observeTargets.forEach((target) => {
+            if (textObserver && !prefersReducedMotion) {
+                textObserver.observe(target);
+            } else {
+                if (target.hasAttribute('data-animate')) {
+                    target.classList.add('is-revealed');
+                } else {
+                    target.querySelectorAll('[data-animate]').forEach((child) => {
+                        child.classList.add('is-revealed');
+                    });
+                }
+            }
+        });
+    }
+}
+
+initTextAnimations();
