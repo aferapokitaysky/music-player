@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aferapokitaysky Player — Премиум кастомизируемый аудио-плеер для macOS & Windows</title>
+    <link rel="icon" type="image/png" href="logo.png">
     
     <!-- SEO Meta Tags -->
     <meta name="description" content="Aferapokitaysky Player — это аудио-плеер нового поколения для macOS и Windows. Киберпанк-дизайн, умный Spotlight-поиск, интеграция со Spotify/SoundCloud, интерактивный конструктор интерфейса и живой визуализатор.">
@@ -45,6 +46,9 @@
 </head>
 <body>
 
+    <!-- Background Particle Canvas (Reacts to audio playback/beats) -->
+    <canvas id="ambient-particles"></canvas>
+
     <!-- Ambient glowing lights -->
     <div class="ambient-glow cyan"></div>
     <div class="ambient-glow orange"></div>
@@ -52,10 +56,7 @@
     <!-- Header Navigation -->
     <header class="header">
         <div class="logo-area">
-            <svg class="logo" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="6" fill="none"/>
-                <path d="M35 30 L70 50 L35 70 Z" fill="currentColor"/>
-            </svg>
+            <img src="logo.png" class="logo-img" alt="Aferapokitaysky Logo">
             <span class="brand-name">Aferapokitaysky</span>
         </div>
         <nav class="nav-links">
@@ -78,18 +79,18 @@
 
         <!-- Download CTAs -->
         <div id="download" class="download-container">
-            <a href="../Aferapokitaysky.zip" download class="download-card mac glow-green" id="download-mac">
+            <a href="../Aferapokitaysky.zip" download class="download-card mac" id="download-mac">
                 <div class="card-inner">
-                    <span class="os-icon">🍏</span>
+                    <img src="mac-os-2-logo-png-transparent.png" class="os-logo" alt="macOS">
                     <div class="info">
                         <span class="os-title">Скачать для macOS</span>
                         <span class="os-details">Версия 1.0 (Apple Silicon / Intel, .ZIP)</span>
                     </div>
                 </div>
             </a>
-            <a href="#" class="download-card win glow-orange" id="download-win">
+            <a href="#" class="download-card win" id="download-win">
                 <div class="card-inner">
-                    <span class="os-icon">🏁</span>
+                    <img src="Microsoft_Windows-Logo.wine.svg" class="os-logo" alt="Windows">
                     <div class="info">
                         <span class="os-title">Скачать для Windows</span>
                         <span class="os-details">Tauri Сборка (.EXE / .MSI в процессе сборки)</span>
@@ -125,21 +126,35 @@
 
         <!-- UI Layout Constructor Mockup -->
         <div class="app-mockup" id="mockup-frame">
+            <!-- Mac style traffic light titlebar -->
+            <div class="mac-traffic-lights">
+                <span class="light close"></span>
+                <span class="light minimize"></span>
+                <span class="light maximize"></span>
+            </div>
+
             <!-- Sidebar column mockup -->
             <div class="mock-column mock-sidebar" id="block-sidebar" style="order: 1;">
                 <div class="mock-header">📁 БИБЛИОТЕКА</div>
-                <div class="mock-item active">❤ Лайки · SoundCloud</div>
-                <div class="mock-item">🔥 Топ-Чарты</div>
-                <div class="mock-item">🎵 Локальные треки</div>
-                <div class="mock-footer">🎨 Тема</div>
+                <div class="mock-item active" onclick="selectMockAlbum('likes')">❤ Лайки · SoundCloud</div>
+                <div class="mock-item" onclick="selectMockAlbum('charts')">🔥 Топ-Чарты</div>
+                <div class="mock-item" onclick="selectMockAlbum('local')">🎵 Локальные треки</div>
+                <div class="mock-footer">
+                    <button class="theme-toggle-btn" onclick="cycleMockTheme()">🎨 Тема: Темная</button>
+                </div>
             </div>
 
             <!-- Track List column mockup -->
             <div class="mock-column mock-tracks" id="block-tracks" style="order: 2;">
-                <div class="mock-header">🔍 ПОИСК СВЕРХУ</div>
-                <div class="mock-track active"><span>Я устал</span><span class="time">3:25</span></div>
-                <div class="mock-track"><span>INNA - Love</span><span class="time">3:24</span></div>
-                <div class="mock-track"><span>Мармелад</span><span class="time">2:02</span></div>
+                <div class="mock-header">
+                    <span>СПИСОК ТРЕКОВ</span>
+                    <button class="mock-search-trigger" onclick="openSearchOverlay()">🔍 Поиск</button>
+                </div>
+                <div class="tracks-list-container" id="mock-tracks-container">
+                    <div class="mock-track active" onclick="playMockTrack('Я устал', '1.Kla$')"><span>Я устал</span><span class="time">3:25</span></div>
+                    <div class="mock-track" onclick="playMockTrack('INNA - Love', 'INNA')"><span>INNA - Love</span><span class="time">3:24</span></div>
+                    <div class="mock-track" onclick="playMockTrack('Мармелад', 'Катя Лель')"><span>Мармелад</span><span class="time">2:02</span></div>
+                </div>
             </div>
 
             <!-- Player column mockup -->
@@ -148,18 +163,34 @@
                     <div class="mock-nowplaying">
                         <div class="mock-art">🎵</div>
                         <div>
-                            <h4>Я устал</h4>
-                            <p>1.Kla$</p>
+                            <h4 id="nowplaying-title">Я устал</h4>
+                            <p id="nowplaying-artist">1.Kla$</p>
                         </div>
                     </div>
                 </div>
                 
                 <div class="mock-player-block" id="p-visualizer" style="order: 2;">
+                    <div class="mock-visualizer-header">
+                        <span class="vis-title">AUDIO SPECTRUM</span>
+                        <div class="vis-tabs">
+                            <button class="vis-tab active" id="btn-vis-bars" onclick="setVisualizerMode('bars')">BARS</button>
+                            <button class="vis-tab" id="btn-vis-wave" onclick="setVisualizerMode('wave')">WAVE</button>
+                            <button class="vis-tab" id="btn-vis-circle" onclick="setVisualizerMode('circle')">CIRCLE</button>
+                            <button class="vis-tab" id="btn-vis-dots" onclick="setVisualizerMode('dots')">DOTS</button>
+                        </div>
+                    </div>
                     <canvas id="visualizer-canvas"></canvas>
                 </div>
                 
                 <div class="mock-player-block" id="p-controls" style="order: 3;">
-                    <div class="mock-controls">⏮  ▶  ⏭</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="track-progress"></div>
+                    </div>
+                    <div class="mock-controls">
+                        <button class="mock-control-btn" onclick="prevMockTrack()">⏮</button>
+                        <button class="mock-control-btn play-btn" id="play-pause-toggle" onclick="togglePlayState()">▶</button>
+                        <button class="mock-control-btn" onclick="nextMockTrack()">⏭</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -178,6 +209,39 @@
             </div>
         </div>
     </section>
+
+    <!-- Spotlight Search Overlay -->
+    <div class="search-overlay" id="search-overlay" style="display: none;" onclick="closeSearchOverlay()">
+        <div class="search-card" onclick="event.stopPropagation()">
+            <div class="search-header">
+                <span class="search-icon-wrapper">🔍</span>
+                <input type="text" id="search-input" placeholder="Поиск треков в SoundCloud..." oninput="handleSearchInput(event)">
+            </div>
+            <div class="search-tabs">
+                <button class="search-tab active" id="tab-sc" onclick="setSearchSource('soundCloud')">SoundCloud</button>
+                <button class="search-tab" id="tab-sp" onclick="setSearchSource('spotify')">Spotify</button>
+            </div>
+            <div class="search-results scrollable" id="search-results-list">
+                <div class="history-section">
+                    <div class="section-title">ИСТОРИЯ ЗАПУСКОВ</div>
+                    <div class="track-row" onclick="playMockTrack('Я устал', '1.Kla$'); closeSearchOverlay()">
+                        <span class="mini-play">▶</span>
+                        <div>
+                            <span class="track-name">Я устал</span>
+                            <span class="track-artist">1.Kla$</span>
+                        </div>
+                    </div>
+                    <div class="track-row" onclick="playMockTrack('INNA - Love', 'INNA'); closeSearchOverlay()">
+                        <span class="mini-play">▶</span>
+                        <div>
+                            <span class="track-name">INNA - Love</span>
+                            <span class="track-artist">INNA</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Page Footer -->
     <footer class="page-footer">
