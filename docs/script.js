@@ -102,9 +102,10 @@ function drawParticles() {
         const p = particles[i];
         const pointerDx = p.x - pointer.x;
         const pointerDy = p.y - pointer.y;
-        const pointerDistance = Math.hypot(pointerDx, pointerDy);
+        const pointerDistSq = pointerDx * pointerDx + pointerDy * pointerDy;
 
-        if (pointer.active && pointerDistance < 120 && pointerDistance > 0) {
+        if (pointer.active && pointerDistSq < 14400 && pointerDistSq > 0) { // 120^2 = 14400
+            const pointerDistance = Math.sqrt(pointerDistSq);
             const push = (120 - pointerDistance) / 120;
             p.vx += (pointerDx / pointerDistance) * push * 0.012;
             p.vy += (pointerDy / pointerDistance) * push * 0.012;
@@ -135,8 +136,9 @@ function drawParticles() {
                 const n = particles[j];
                 const dx = p.x - n.x;
                 const dy = p.y - n.y;
-                const distance = Math.hypot(dx, dy);
-                if (distance < 84) {
+                const distSq = dx * dx + dy * dy;
+                if (distSq < 7056) { // 84^2 = 7056
+                    const distance = Math.sqrt(distSq);
                     partCtx.globalAlpha = (1 - distance / 84) * 0.03;
                     partCtx.strokeStyle = p.color;
                     partCtx.lineWidth = 0.6;
@@ -203,6 +205,7 @@ document.addEventListener('mouseout', (e) => {
 // --- SCREENSHOT 3D PERSPECTIVE TILT ANIMATION ---
 const screenshotFrame = document.getElementById('screenshot-frame');
 if (screenshotFrame) {
+    let tiltTick = null;
     screenshotFrame.addEventListener('mousemove', (e) => {
         if (prefersReducedMotion) return;
         const rect = screenshotFrame.getBoundingClientRect();
@@ -215,14 +218,16 @@ if (screenshotFrame) {
         const rotateX = ((centerY - y) / centerY) * 10; // Max 10 degrees tilt
         const rotateY = ((x - centerX) / centerX) * 10;
         
-        screenshotFrame.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-        
-        // Adjust liquid highlight coordinate variables
-        screenshotFrame.style.setProperty('--mouse-x', `${x}px`);
-        screenshotFrame.style.setProperty('--mouse-y', `${y}px`);
+        if (tiltTick) cancelAnimationFrame(tiltTick);
+        tiltTick = requestAnimationFrame(() => {
+            screenshotFrame.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            screenshotFrame.style.setProperty('--mouse-x', `${x}px`);
+            screenshotFrame.style.setProperty('--mouse-y', `${y}px`);
+        });
     });
     
     screenshotFrame.addEventListener('mouseleave', () => {
+        if (tiltTick) cancelAnimationFrame(tiltTick);
         screenshotFrame.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
         screenshotFrame.style.setProperty('--mouse-x', '50%');
         screenshotFrame.style.setProperty('--mouse-y', '50%');
