@@ -225,12 +225,19 @@ body {
 }
 
 .os-logo {
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
-  filter: brightness(0) invert(1); /* Keeps it purely white / monochrome */
   opacity: 0.85;
   transition: opacity 0.3s;
+}
+
+.win .os-logo {
+  filter: brightness(0) invert(1); /* Keeps the Windows SVG white */
+}
+
+.mac .os-logo {
+  filter: none; /* Shows macOS Finder icon detail clearly */
 }
 
 .download-card:hover .os-logo {
