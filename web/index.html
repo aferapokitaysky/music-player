@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aferapokitaysky Player — Премиум кастомизируемый аудио-плеер для macOS & Windows</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Aferapokitaysky Player — это аудио-плеер нового поколения для macOS и Windows. Киберпанк-дизайн, умный Spotlight-поиск, интеграция со Spotify/SoundCloud, интерактивный конструктор интерфейса и живой визуализатор.">
+    <meta name="keywords" content="аудио плеер, музыкальный плеер, скачать музыкальный плеер, tauri player, music player macOS, music player windows, spotify player, soundcloud player, aferapokitaysky, кастомизируемый плеер, эквалайзер, аудио визуализатор">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://aferapokitaysky.github.io/music-player/">
+
+    <!-- OpenGraph (Social Media SEO) -->
+    <meta property="og:title" content="Aferapokitaysky Player — Звук. Кастомизация. Стиль.">
+    <meta property="og:description" content="Киберпанк медиаплеер с полной кастомизацией интерфейса, встроенным поиском Spotlight и живым неоновым визуализатором. Доступен под macOS и Windows.">
+    <meta property="og:image" content="../logo.png">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Aferapokitaysky Player">
+
+    <!-- Schema.org JSON-LD (Search Snippet SEO) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Aferapokitaysky Player",
+      "operatingSystem": "macOS 12.0+, Windows 10+",
+      "applicationCategory": "MultimediaApplication",
+      "downloadUrl": "https://aferapokitaysky.github.io/music-player/Aferapokitaysky.zip",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.00",
+        "priceCurrency": "USD"
+      },
+      "description": "Premium, highly customizable audio player with interactive neon layouts, built-in global search palette, and reactive sound spectrum visualizers."
+    }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Ambient glowing lights -->
+    <div class="ambient-glow cyan"></div>
+    <div class="ambient-glow orange"></div>
+
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="logo-area">
+            <svg class="logo" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="6" fill="none"/>
+                <path d="M35 30 L70 50 L35 70 Z" fill="currentColor"/>
+            </svg>
+            <span class="brand-name">Aferapokitaysky</span>
+        </div>
+        <nav class="nav-links">
+            <a href="#features">Особенности</a>
+            <a href="#demo">Интерактивный макет</a>
+            <a href="#download" class="nav-cta">Скачать</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="hero">
+        <h1 class="hero-title">
+            ЗВУК.<br>
+            <span class="gradient-text">КАСТОМИЗАЦИЯ.</span><br>
+            СТИЛЬ.
+        </h1>
+        <p class="hero-subtitle">
+            Премиум-аудиопроигрыватель в киберпанк-эстетике. Собери свой собственный интерфейс с помощью горизонтального и вертикального конструкторов, находи треки мгновенно через Spotlight-поиск и наслаждайся звуком.
+        </p>
+
+        <!-- Download CTAs -->
+        <div id="download" class="download-container">
+            <a href="../Aferapokitaysky.zip" download class="download-card mac glow-green" id="download-mac">
+                <div class="card-inner">
+                    <span class="os-icon">🍏</span>
+                    <div class="info">
+                        <span class="os-title">Скачать для macOS</span>
+                        <span class="os-details">Версия 1.0 (Apple Silicon / Intel, .ZIP)</span>
+                    </div>
+                </div>
+            </a>
+            <a href="#" class="download-card win glow-orange" id="download-win">
+                <div class="card-inner">
+                    <span class="os-icon">🏁</span>
+                    <div class="info">
+                        <span class="os-title">Скачать для Windows</span>
+                        <span class="os-details">Tauri Сборка (.EXE / .MSI в процессе сборки)</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </main>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <h2 class="section-heading">ПОЧЕМУ ИМЕННО ОН?</h2>
+        <div class="features-grid">
+            <article class="feature-card">
+                <h3>🛠 Конструктор макетов</h3>
+                <p>Меняйте порядок колонок (Сайдбар, Треки, Пульт управления) в реальном времени. Настраивайте вертикальное положение элементов внутри плеера под свои предпочтения.</p>
+            </article>
+            <article class="feature-card">
+                <h3>🔍 Spotlight Поиск</h3>
+                <p>Умное поисковое окно вызывается нажатием кнопки и ищет треки по базам Spotify и SoundCloud одновременно с сохранением истории ваших любимых запусков.</p>
+            </article>
+            <article class="feature-card">
+                <h3>🌌 Аудиоспектр</h3>
+                <p>4 уникальных интерактивных режима визуализатора: Bars, Wave, Circle, Dots. Столбики подстраиваются под выбранную вами тему оформления.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- Interactive Mockup & Demo Section -->
+    <section id="demo" class="demo-section">
+        <h2 class="section-heading">ИНТЕРАКТИВНЫЙ МАКЕТ ПЛЕЕРА</h2>
+        <p class="section-description">Попробуйте изменить порядок блоков интерфейса прямо в браузере с помощью интерактивных кнопок!</p>
+
+        <!-- UI Layout Constructor Mockup -->
+        <div class="app-mockup" id="mockup-frame">
+            <!-- Sidebar column mockup -->
+            <div class="mock-column mock-sidebar" id="block-sidebar" style="order: 1;">
+                <div class="mock-header">📁 БИБЛИОТЕКА</div>
+                <div class="mock-item active">❤ Лайки · SoundCloud</div>
+                <div class="mock-item">🔥 Топ-Чарты</div>
+                <div class="mock-item">🎵 Локальные треки</div>
+                <div class="mock-footer">🎨 Тема</div>
+            </div>
+
+            <!-- Track List column mockup -->
+            <div class="mock-column mock-tracks" id="block-tracks" style="order: 2;">
+                <div class="mock-header">🔍 ПОИСК СВЕРХУ</div>
+                <div class="mock-track active"><span>Я устал</span><span class="time">3:25</span></div>
+                <div class="mock-track"><span>INNA - Love</span><span class="time">3:24</span></div>
+                <div class="mock-track"><span>Мармелад</span><span class="time">2:02</span></div>
+            </div>
+
+            <!-- Player column mockup -->
+            <div class="mock-column mock-player" id="block-player" style="order: 3;">
+                <div class="mock-player-block" id="p-meta" style="order: 1;">
+                    <div class="mock-nowplaying">
+                        <div class="mock-art">🎵</div>
+                        <div>
+                            <h4>Я устал</h4>
+                            <p>1.Kla$</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mock-player-block" id="p-visualizer" style="order: 2;">
+                    <canvas id="visualizer-canvas"></canvas>
+                </div>
+                
+                <div class="mock-player-block" id="p-controls" style="order: 3;">
+                    <div class="mock-controls">⏮  ▶  ⏭</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customizer controls -->
+        <div class="demo-controls">
+            <div class="control-group">
+                <span>ПОРЯДОК КОЛОНОК:</span>
+                <button class="btn" onclick="shiftColumns(-1)">◀ Сдвинуть влево</button>
+                <button class="btn" onclick="shiftColumns(1)">Сдвинуть вправо ▶</button>
+            </div>
+            <div class="control-group">
+                <span>РЕДАКТОР ПЛЕЕРА:</span>
+                <button class="btn" onclick="shiftPlayerBlocks(-1)">🔼 Сдвинуть блоки вверх</button>
+                <button class="btn" onclick="shiftPlayerBlocks(1)">Сдвинуть блоки вниз 🔽</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Footer -->
+    <footer class="page-footer">
+        <p>&copy; 2026 Aferapokitaysky Player. Все права защищены. Разработано с любовью и киберпанком.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
