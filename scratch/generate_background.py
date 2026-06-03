@@ -79,4 +79,4 @@ def generate_dmg_background(output_path):
     print(f"Retina DMG Background generated successfully at: {output_path}")
 
 if __name__ == "__main__":
-    generate_dmg_background("web/dmg_background.png")
+    generate_dmg_background("docs/dmg_background.png")

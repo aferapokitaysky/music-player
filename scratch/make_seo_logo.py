@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw
 
 def main():
     src_path = "/Users/korova/Desktop/aesthetic-player/f9539e2b-3f71-45da-97d4-0064bc8e8e48.png"
-    dst_path = "/Users/korova/Desktop/aesthetic-player/web/logo_seo.png"
+    dst_path = "/Users/korova/Desktop/aesthetic-player/docs/logo_seo.png"
     
     if not os.path.exists(src_path):
         print(f"Source file not found: {src_path}")

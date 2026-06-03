@@ -30,7 +30,7 @@ mkdir -p dmg_temp
 echo -e "\033[0;33mPreparing installer files and generating background...\033[0m"
 python3 scratch/generate_background.py
 mkdir -p dmg_temp/.background
-cp web/dmg_background.png dmg_temp/.background/background.png
+cp docs/dmg_background.png dmg_temp/.background/background.png
 cp -R "$APP_PATH" dmg_temp/
 ln -s /Applications dmg_temp/Applications
 
